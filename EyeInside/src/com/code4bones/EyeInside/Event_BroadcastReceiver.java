@@ -1,7 +1,5 @@
 package com.code4bones.EyeInside;
 
-import com.code4bones.utils.NetLog;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;

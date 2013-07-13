@@ -71,7 +71,7 @@ public class SmsObj extends Object implements Comparable<SmsObj> {
 		try {
 			is = context.getContentResolver().openInputStream(uri);
 			byte[] buffer = new byte[1024];
-			int len = 0;
+			int len;
 			while ( (len = is.read(buffer)) > 0) 
 				bos.write(buffer);
 			

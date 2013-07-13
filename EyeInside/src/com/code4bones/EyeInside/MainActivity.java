@@ -1,27 +1,11 @@
 package com.code4bones.EyeInside;
 
 
-import java.util.ArrayList;
-import java.util.Date;
-
 import com.code4bones.utils.NetLog;
 
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.ContactsContract;
-import android.provider.ContactsContract.CommonDataKinds.Email;
-import android.provider.ContactsContract.CommonDataKinds.Organization;
-import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.provider.ContactsContract.CommonDataKinds.StructuredName;
-import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
-import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Data;
-import android.provider.ContactsContract.RawContacts;
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.ContentProviderOperation;
-import android.content.ContentValues;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.view.Menu;
 
