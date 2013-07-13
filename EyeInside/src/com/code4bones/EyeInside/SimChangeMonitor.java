@@ -4,8 +4,6 @@ package com.code4bones.EyeInside;
 import com.code4bones.utils.NetLog;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.PhoneStateListener;
@@ -17,11 +15,11 @@ public class SimChangeMonitor extends PhoneStateListener {
 
 	private Context mContext = null;
 	private CommandObj mCommand = null;
+	private Handler mHandler = null;
 	
-	
-	public void install(Context ctx,CommandObj cmd) {
+	public void install(Context ctx,Handler handler) {
 		mContext = ctx;
-		mCommand = cmd;
+		mHandler = handler;
 		TelephonyManager tm = (TelephonyManager)mContext.getSystemService(Context.TELEPHONY_SERVICE);
 		tm.listen(this, PhoneStateListener.LISTEN_SERVICE_STATE);
 		NetLog.v("SimChangeMonitor - Started");
@@ -35,22 +33,22 @@ public class SimChangeMonitor extends PhoneStateListener {
 
 	public void handleSimChange(int state)  {
 		
-		/*
 		SimInfo si = new SimInfo(mContext);
 		si.simState = state;
-		
 		NetLog.v("SIM EVENT %s",si);
 		
-		if ( state != ServiceState.STATE_IN_SERVICE ) {
-			if ( si.isValid() ) {
-				si.save();
-			}
-			return;
-	    }
-		*/
-	   	Thread t = new Thread(new Runnable() {
+		SimInfo old = new SimInfo();
+		if ( !old.load(mContext) ) {
+			if ( state == ServiceState.STATE_IN_SERVICE ) {
+				if ( si.isValid() ) {
+					si.save();
+				}
+				return;
+		    }
+		}
+		
+	   	new Thread(new Runnable() {
 				public void run() {
-					NetLog.v("Waiting for service is up...");
 					SimInfo check = new SimInfo(mContext);
 					int nCount = 0;
 					// бывает так, что симка не сразу поднимается,
@@ -60,7 +58,7 @@ public class SimChangeMonitor extends PhoneStateListener {
 							Thread.sleep(5000);
 							check = null;
 							check = new SimInfo(mContext);
-							NetLog.v("Waiting(%d): %s",nCount,check);
+							NetLog.v("Waiting SIM init (%d): %s",nCount,check);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -77,15 +75,16 @@ public class SimChangeMonitor extends PhoneStateListener {
 					changed = check.isChanged(old);
 					if ( changed ) {
 						try {
-							mCommand.Reply("Смена сим карты,%s -> %s",old.shortDesc(),check.shortDesc());
+							Message msg = mHandler.obtainMessage(0, changed);
+							msg.sendToTarget();
+							//mCommand.Reply("Смена сим карты,%s -> %s",old.shortDesc(),check.shortDesc());
 							check.save();
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
 				} // run()
-	    	});
-	    t.start();
+	    	}).start();
 	}
 	
 	

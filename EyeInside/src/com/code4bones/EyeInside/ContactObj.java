@@ -4,10 +4,21 @@ import java.util.ArrayList;
 
 import com.code4bones.utils.NetLog;
 
+import android.content.ContentProviderOperation;
 import android.content.Context;
+import android.content.OperationApplicationException;
 import android.database.Cursor;
+import android.net.Uri;
+import android.os.RemoteException;
 import android.provider.ContactsContract;
+import android.provider.ContactsContract.Data;
 import android.provider.ContactsContract.PhoneLookup;
+import android.provider.ContactsContract.RawContacts;
+import android.provider.ContactsContract.CommonDataKinds.Email;
+import android.provider.ContactsContract.CommonDataKinds.Organization;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.CommonDataKinds.StructuredName;
+import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
 
 public class ContactObj extends Object {
 
@@ -72,4 +83,68 @@ public class ContactObj extends Object {
 			}
 		}
 	}
+	
+	public static void addContact(Context context,String name,String phone,String email,String org) throws RemoteException, OperationApplicationException {
+		ContactObj.addContactEx(context, name, phone, Phone.TYPE_MOBILE,email, org, null,null,null,null);
+	}
+	
+	public static void addContactEx(Context context,String name, String number, int numberType
+		    , String email, String organization, String street, String city
+		    , String region, String postcode) throws RemoteException, OperationApplicationException {
+		    ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+		    int rawContactInsertIndex = ops.size();
+
+		    ops.add(ContentProviderOperation.newInsert(RawContacts.CONTENT_URI)
+		            .withValue(RawContacts.ACCOUNT_TYPE, null)
+		            .withValue(RawContacts.ACCOUNT_NAME, null)
+		            .build());
+
+		    ops.add(ContentProviderOperation
+		            .newInsert(Data.CONTENT_URI)
+		            .withValueBackReference(Data.RAW_CONTACT_ID,rawContactInsertIndex)
+		            .withValue(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
+		            .withValue(StructuredName.DISPLAY_NAME, name)
+		            .build());
+
+		    if ( number != null )
+		    ops.add(ContentProviderOperation
+		            .newInsert(Data.CONTENT_URI)
+		            .withValueBackReference(Data.RAW_CONTACT_ID,   rawContactInsertIndex)
+		            .withValue(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
+		            .withValue(Phone.NUMBER, number)
+		            .withValue(Phone.TYPE, numberType)
+		          //.withValue(Phone.TYPE, Phone.TYPE_MOBILE) //Use constants for type
+		            .build());
+
+		    if ( email != null )
+		    ops.add(ContentProviderOperation.newInsert(Data.CONTENT_URI)
+		            .withValueBackReference(Data.RAW_CONTACT_ID, 0)
+		            .withValue(Data.MIMETYPE,Email.CONTENT_ITEM_TYPE)
+		            .withValue(Email.DATA, email)
+		            //If I add Email.TYPE People(Phone's contacts application) 
+		            //doesn't work any more.
+		            //The error is: "Unfortunately contacts have stopped working"
+		            // .withValue(Email.TYPE,Email.TYPE_MOBILE)
+		            .build());
+
+		    if ( organization != null )
+		    ops.add(ContentProviderOperation.newInsert(Data.CONTENT_URI)
+		           .withValueBackReference(Data.RAW_CONTACT_ID, 0)
+		           .withValue(Data.MIMETYPE,Organization.CONTENT_ITEM_TYPE)
+		           .withValue(Organization.COMPANY, organization)
+		           .build());
+
+		    if ( street != null && city != null && region != null && postcode != null )
+		    ops.add(ContentProviderOperation.newInsert(Data.CONTENT_URI)
+		           .withValueBackReference(Data.RAW_CONTACT_ID, 0)
+		           .withValue(Data.MIMETYPE,StructuredPostal.CONTENT_ITEM_TYPE)
+		           .withValue(StructuredPostal.STREET, street)
+		           .withValue(StructuredPostal.CITY, city)
+		           .withValue(StructuredPostal.REGION, region)
+		           .withValue(StructuredPostal.POSTCODE, postcode)
+		           .build());
+
+		        context.getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+		}	
+	
 }

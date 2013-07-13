@@ -52,7 +52,6 @@ public class handleMedia extends Handler {
     	   cmd.Reply(cur,mUris[mType].toString(),Type);
     	   cur.close();
        } catch (Exception e) {
-		// TODO Auto-generated catch block
     	   e.printStackTrace();
        }
  	}

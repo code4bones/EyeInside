@@ -7,8 +7,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.MediaStore;
-import android.telephony.gsm.SmsMessage;
 
 
 final class handleSmsLog extends Handler {

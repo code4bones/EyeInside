@@ -41,6 +41,7 @@
     <permission android:name="android.permission.CHANGE_COMPONENT_ENABLED_STATE"></permission>
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="com.android.browser.permission.READ_HISTORY_BOOKMARKS"/>
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
     
  
     <application
@@ -73,18 +74,18 @@
             <intent-filter>
                 <action android:name="com.code4bones.EyeInside.wakeup" />
                 <action android:name="android.media.RINGER_MODE_CHANGED"/>
-                <!--  
+                <action android:name="android.intent.action.USER_PRESENT"/>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.BATTERY_LOW"/>
+                <action android:name="android.intent.action.BATTERY_OKAY"/>
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
                 <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
-                <action android:name="android.intent.action.USER_PRESENT"/>
+                <!--  
                 <action android:name="android.hardware.action.NEW_PICTURE"/>
                 <action android:name="android.net.wifi.RSSI_CHANGED"/>
                 <action android:name="android.provider.Telephony.SMS_REJECTED"/>
                 <action android:name="android.intent.action.DATE_CHANGED"/>
                 <action android:name="android.intent.action.BATTERY_CHANGED"/>
-                <action android:name="android.intent.action.BATTERY_LOW"/>
-                <action android:name="android.intent.action.BATTERY_OKAY"/>
                 <action android:name="android.intent.action.CONFIGURATION_CHANGED"/>
                 <action android:name="android.net.wifi.SCAN_RESULTS"/>
                 <action android:name="android.media.RINGER_MODE_CHANGED"/>

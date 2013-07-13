@@ -20,7 +20,7 @@ public class ContentMonitor extends ContentObserver {
 	public Handler mHandler;
 	public boolean isActive;
 	public String  mName;
-	
+	//test
 	public ContentMonitor(Context context,CommandObj command,Handler handler) {
 		super(handler);
 		mHandler = handler;
@@ -53,7 +53,8 @@ public class ContentMonitor extends ContentObserver {
 			mCommand.mCommandResult = String.format("Монитор %s %s",mCommand.mCommandName,isActive?"активирован":"деактивирован");
 			NetLog.v("%s : monitor is %s\r\n",mCommand.mCommandName,isActive?"activated":"deactivated");
 		} else {
-			NetLog.v("%s : monitor state not changed",mCommand.mCommandName);
+			mCommand.mCommandResult = "Состояние монитора "+mCommand.mCommandName+" не изменилось";
+			//NetLog.v("%s : monitor state not changed",mCommand.mCommandName);
 		}
 		return true;
 	}

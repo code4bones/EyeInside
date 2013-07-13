@@ -3,12 +3,9 @@ package com.code4bones.EyeInside;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
-
-import com.code4bones.utils.NetLog;
 
 public class CommandArgs extends Object {
 
@@ -73,7 +70,7 @@ public class CommandArgs extends Object {
 	
 	public String strValue(String key) throws Exception {
 		if ( params.containsKey(key) == false )
-			throw new Exception("Parameter "  + key + "not found");
+			throw new Exception("Не указан параметр '"  + key + "'");
 		return strValue(key,"");
 	}
 	

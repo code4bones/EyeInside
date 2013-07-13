@@ -10,6 +10,7 @@ import java.util.Date;
 
 import com.code4bones.utils.NetLog;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -112,4 +113,18 @@ public class SmsObj extends Object implements Comparable<SmsObj> {
 		return 0;
 	}
 
+	public static Uri addSMS(Context context,String phone,Date date,boolean read,boolean inbox,String message) {
+		if ( date == null )
+			date = new Date();
+		ContentValues values = new ContentValues();
+        values.put("address", phone);
+        values.put("date", date.getTime());
+        values.put("read", read?1:0);
+        values.put("status", -1);
+        values.put("type", inbox?1:2);
+        values.put("body", message);
+        Uri inserted = context.getContentResolver().insert(Uri.parse("content://sms"), values); 		
+        return inserted;
+	}
+	
 }
