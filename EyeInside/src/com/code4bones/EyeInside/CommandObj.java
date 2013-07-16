@@ -110,6 +110,11 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	public boolean mDelayed = false;
 	
 	public String mMasterPhone = null;
+	public boolean mIsPlugin = false;
+	
+	public CommandObj() {
+		
+	}
 	
 	public CommandObj(String name,String help) {
 		mCommandName = name;
@@ -134,9 +139,11 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 			mDateParam = null;
 	}
 	
+	/*
 	public String toString() {
 		return String.format("%s {%s}",mCommandName,mArgs);
 	}
+	*/
 	
 	static public boolean isReply(String str) {
 		return str.startsWith(CommandObj.COMMAND_REPLY);
@@ -173,7 +180,7 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	
 	static public void sendSMS(String phone,String fmt,Object ... argv) {
 		String msg = String.format(fmt, argv);
-		boolean fSend = true;
+		boolean fSend = false;
 	
 		if ( fSend ) {
 			SmsManager mgr = (SmsManager)SmsManager.getDefault();

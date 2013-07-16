@@ -91,6 +91,10 @@ public class CommandPool {
 		});
 		
 		
+		// plugins manager
+		PluginManager plugins = new PluginManager(this);
+		plugins.reloadPlugins();
+		
 		Add(new CommandObj(CommandObj.CMD_HELP,"[command name>]") {
 			public int Invoke() throws Exception {
 				this.mCommandResult = "";
@@ -142,6 +146,8 @@ public class CommandPool {
 		//Add(new CommandObjInvoke(CommandObj.CMD_INVOKE,"[command name] [params..]"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
 		
+		for ( CommandObj cmd : mCommands )
+			NetLog.v("CMD: %s [%s]",cmd.mCommandName,cmd);
 		
 		NetLog.v("Commands ready: %d",mCommands.size());
 		mInitialized = true;
