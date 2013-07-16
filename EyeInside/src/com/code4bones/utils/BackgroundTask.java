@@ -17,7 +17,7 @@ public class BackgroundTask<Result,Param> extends AsyncTask<Param, Void, Result>
 		this.showProgress = withProgress;
 	}
 	
-	public void onComplete(Result result) {
+	public void onComplete(Result result) throws Exception {
 		
 	}
 	
@@ -25,8 +25,8 @@ public class BackgroundTask<Result,Param> extends AsyncTask<Param, Void, Result>
 	protected void onPreExecute() {
 		if ( showProgress ) {
 		    progress = new ProgressDialog(context);
-		    progress.setTitle("Подождите...");
-		    progress.setMessage("Обработка запроса...");
+		    progress.setTitle("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ...");
+		    progress.setMessage("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ...");
 		    progress.setIndeterminate(true);
 		    progress.setCancelable(true);
 		    progress.show();
@@ -41,7 +41,12 @@ public class BackgroundTask<Result,Param> extends AsyncTask<Param, Void, Result>
 	protected void onPostExecute(Result result) {
 		if ( showProgress )
 			progress.dismiss();
-		onComplete(result);
+		try {
+			onComplete(result);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
   }	
 	
 	public void exec(Param ... params) {

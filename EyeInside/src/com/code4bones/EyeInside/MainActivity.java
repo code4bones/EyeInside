@@ -1,30 +1,18 @@
 package com.code4bones.EyeInside;
 
 
-import java.util.List;
 
 import com.code4bones.utils.NetLog;
 
 import android.location.LocationManager;
-import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.provider.ContactsContract.Data;
-import android.provider.Settings;
-import android.accessibilityservice.AccessibilityService;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.pm.ServiceInfo;
-import android.database.Cursor;
 import android.view.Menu;
-import android.view.accessibility.AccessibilityManager;
 
 public class MainActivity extends Activity {
 
@@ -88,6 +76,8 @@ public class MainActivity extends Activity {
 			//NetLog.v("%s",c.getString(ctColumnIndex(Data.DISPLAY_NAME)));
 		} while ( c.moveToNext());
 		*/
+		
+		
 		
 		checkFirstRun();
 		
@@ -170,4 +160,48 @@ public class MainActivity extends Activity {
 		super.onDestroy();
 		NetLog.v("Activity Killed");
 	}
+} // MainActivity
+
+/*
+ private void saveToPreferences(Bundle in) {
+    Parcel parcel = Parcel.obtain();
+    String serialized = null;
+    try {
+        in.writeToParcel(parcel, 0);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        IOUtils.write(parcel.marshall(), bos);
+
+        serialized = Base64.encodeToString(bos.toByteArray(), 0);
+    } catch (IOException e) {
+        Log.e(getClass().getSimpleName(), e.toString(), e);
+    } finally {
+        parcel.recycle();
+    }
+    if (serialized != null) {
+        SharedPreferences settings = getSharedPreferences(PREFS, 0);
+        Editor editor = settings.edit();
+        editor.putString("parcel", serialized);
+        editor.commit();
+    }
 }
+
+private Bundle restoreFromPreferences() {
+    Bundle bundle = null;
+    SharedPreferences settings = getSharedPreferences(PREFS, 0);
+    String serialized = settings.getString("parcel", null);
+
+    if (serialized != null) {
+        Parcel parcel = Parcel.obtain();
+        try {
+            byte[] data = Base64.decode(serialized, 0);
+            parcel.unmarshall(data, 0, data.length);
+            parcel.setDataPosition(0);
+            bundle = parcel.readBundle();
+        } finally {
+            parcel.recycle();
+        }
+    }
+    return bundle;
+} 
+ */

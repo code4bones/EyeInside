@@ -130,4 +130,10 @@ public class CommandArgs extends Object {
 		return res;
 	}
 
+	public static String haveNO(String opt) {
+		if ( opt.startsWith("no "))
+			return opt.substring(3).trim();
+		return null;
+	}
+	
 }

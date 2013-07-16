@@ -34,7 +34,7 @@ public class SimInfo {
 		this.simSerial = prefs.getString("sim.id", "");
 		this.line1Number = prefs.getString("sim.num", "");
 		this.simState = prefs.getInt("sim.state", 0);
-		NetLog.v("SimInfo loaded: %s",this);
+		//NetLog.v("SimInfo loaded: %s",this);
 		return isValid();
 	}
 	

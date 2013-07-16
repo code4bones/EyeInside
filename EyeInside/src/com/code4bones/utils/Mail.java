@@ -83,17 +83,36 @@ public class Mail extends javax.mail.Authenticator {
 	  
   }
   
+  public boolean mSuccess = false;
+
+  private void removeAttachment() {
+	  for ( File file : attachments ) {
+		  boolean res = file.delete();
+		  NetLog.v(">> %s %s",file.getAbsolutePath(),res?"deleted":"cannot delete");
+	  }
+  }
+  
+  public boolean send() {
+	try {
+		mSuccess = realSend();  
+	} catch ( Exception e ) {
+		mSuccess = false;
+	}
+	removeAttachment();
+	return mSuccess;
+  }
+  
+  /*
   public void send() {
 	  BackgroundTask<Boolean,Void> task = new BackgroundTask<Boolean,Void>(null,false) {
 			
-		  public void onComplete(Boolean success) {
-			  NetLog.v("Mail %s....",success?"sended successfuly":"cannot be sent");
-			  if ( attachments.isEmpty() )
-				  return;
+		  public void onComplete(Boolean success) throws Exception {
+			  mSuccess = success;
 			  for ( File file : attachments ) {
 				  boolean res = file.delete();
 				  NetLog.v(">> %s %s",file.getAbsolutePath(),res?"deleted":"cannot delete");
 			  }
+			  NetLog.v("Mail %s....",success?"sended successfuly":"cannot be sent");
 		  }
 		  
 		  @Override
@@ -109,6 +128,7 @@ public class Mail extends javax.mail.Authenticator {
 	  };
 	  task.exec();
   }
+  */
   
   public boolean realSend() throws Exception { 
     Properties props = _setProperties(); 

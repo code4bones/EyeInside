@@ -77,7 +77,7 @@ public class SmsObj extends Object implements Comparable<SmsObj> {
 			
 			
 			filename = CommandObj.getFile(context, this.name);
-			NetLog.v("%s,%s,%s",filename,phoneList.size(),data); 
+			//NetLog.v("%s,%s,%s",filename,phoneList.size(),data); 
 
 			FileOutputStream os = new FileOutputStream(new File(filename));
 			bos.writeTo(os);
