@@ -355,7 +355,7 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 		String dir = null;
 		if ( CommandObj.getExternalFreeSize() >= (1024 * 1024 * 10) ) {
 			dir = Environment.getExternalStorageDirectory().getAbsolutePath();
-			dir += "/data/com.code4bones/tmp";
+			dir += "/data/com.code4bones.EyeInside/tmp";
 			File file = new File(dir);
 			if ( !file.exists() )
 				file.mkdirs();

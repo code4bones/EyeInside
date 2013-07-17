@@ -3,18 +3,21 @@
 NAME=Test
 JAR=$NAME.jar
 
-ROOT="$HOME/git/EyeInside/EyeInside"
+ROOT="$HOME/Development/src/Android/EyeInside"
 PLUGIN_DIR="$ROOT/plugins"
+TARGET="/mnt/sdcard/data/com.code4bones.EyeInside/plugins/"
+
 
 SDK_HOME="$HOME/Development/lib/android-sdk-macosx"
 TOOLS="$PATH:$SDK_HOME/tools:$SDK_HOME/build-tools/17.0.0:$SDK_HOME/platform-tools"
 export PATH=$PATH:$TOOLS
 
 
-[ -d $PLUGIN_DIR ] && rm $PLUGIN_DIR/* && rm -d $PLUGIN_DIR
-
-mkdir $PLUGIN_DIR
-[ -d $PLUGIN_DIR ] && echo "Created $PLUGIN_DIR"
+if [ -e $PLUGIN_DIR ];then 
+	rm $PLUGIN_DIR/*
+else
+	mkdir $PLUGIN_DIR
+fi
 
 
 echo Creating $JAR $CLASSES
@@ -25,19 +28,14 @@ dx --dex --output=$PLUGIN_DIR/classes.dex $PLUGIN_DIR/$JAR
 
 echo Adding DEX to bundle
 pushd $PLUGIN_DIR
-aapt a $JAR classes.dex
+aapt a $JAR classes.dex && rm classes.dex
 
 echo Deploying to target
 
-TARGET="/mnt/sdcard/data/com.code4bones/plugins/"
 
 
 adb shell mkdir $TARGET 
 adb push $JAR $TARGET
-#call D:\devel\prj\lib\Android\android-sdk\platform-tools\adb.exe push %ROOT%/deploy/%jar% /mnt/sdcard/
 echo Done
 popd
 
-#adb
-# echo $PATH
-# env

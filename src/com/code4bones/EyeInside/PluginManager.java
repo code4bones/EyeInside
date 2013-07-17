@@ -25,7 +25,7 @@ public class PluginManager {
 
 		String msg;
 		try {
-			DexClassLoader classLoader = new DexClassLoader(jarFile, "/data/com.code4bones/tmp/", null, getClass().getClassLoader());
+			DexClassLoader classLoader = new DexClassLoader(jarFile, "/data/com.code4bones.EyeInside/tmp/", null, getClass().getClassLoader());
 			Class<?> cls = classLoader.loadClass(className);
 			ICommandObjPlugin inst = (ICommandObjPlugin)cls.newInstance();
 			CommandObj command = (CommandObj)inst.getPlugin();
@@ -50,7 +50,11 @@ public class PluginManager {
 	
 	public String getPluginHome()  {
 		String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
-		dir += "/data/com.code4bones/plugins/";
+		dir += "/data/com.code4bones.EyeInside/plugins/";
+		File file = new File(dir);
+		if ( !file.exists() )
+			file.mkdirs();
+		
 		return dir;
 	}
 	
