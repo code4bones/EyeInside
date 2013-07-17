@@ -59,6 +59,8 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	public static final String CMD_NOTIFY = "notify";
 	public static final String CMD_INVOKE = "invoke";
 	
+	public static final String CMD_PLUGIN = "plugin";
+	
 	
 	
 	public static final int OK    = 0;
@@ -111,6 +113,7 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	
 	public String mMasterPhone = null;
 	public boolean mIsPlugin = false;
+	public String mPluginFile = null;
 	
 	public CommandObj() {
 		
@@ -180,7 +183,7 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	
 	static public void sendSMS(String phone,String fmt,Object ... argv) {
 		String msg = String.format(fmt, argv);
-		boolean fSend = false;
+		boolean fSend = true;
 	
 		if ( fSend ) {
 			SmsManager mgr = (SmsManager)SmsManager.getDefault();

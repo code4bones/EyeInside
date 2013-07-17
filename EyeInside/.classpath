@@ -7,7 +7,15 @@
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
 	<classpathentry kind="lib" path="libs/activation.jar"/>
 	<classpathentry kind="lib" path="libs/additionnal.jar"/>
-	<classpathentry kind="lib" path="libs/apache-mime4j-0.6.1.jar"/>
 	<classpathentry kind="lib" path="libs/mail.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/commons-codec-1.6.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/httpclient-4.2.5.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/httpmime-4.2.5.jar"/>
+	<classpathentry kind="lib" path="libs/http/core/httpcore-4.2.4.jar"/>
+	<classpathentry kind="lib" path="libs/http/core/httpcore-ab-4.2.4.jar"/>
+	<classpathentry kind="lib" path="libs/http/core/httpcore-nio-4.2.4.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/fluent-hc-4.2.5.jar"/>
+	<classpathentry kind="lib" path="libs/http/client/httpclient-cache-4.2.5.jar"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

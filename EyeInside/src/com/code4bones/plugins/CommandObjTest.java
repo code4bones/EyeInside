@@ -9,16 +9,15 @@ import com.code4bones.utils.NetLog;
 public class CommandObjTest extends CommandObj implements ICommandObjPlugin {
 
 	public CommandObjTest(){
-		NetLog.v("Plugin: CommandObjTest() default");
+		super("test", "help");
 	}
 	
-	public CommandObjTest(String name, String help) {
-		super(name, help);
-	}
+//	public CommandObjTest(String name, String help) {
+//	}
 
 	@Override
 	public CommandObjTest getPlugin() {
-		return new CommandObjTest("test","Pluging");
+		return new CommandObjTest();
 	}
 	
 	@Override

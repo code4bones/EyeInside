@@ -21,16 +21,16 @@ public class PluginManager {
 	
 	public CommandObj loadPlugin(String jarFile,String classPath) {
 		String className = classPath.substring(0, classPath.length()-6).replace("/",".");
-		NetLog.v("class name = %s\r\n",className);
+		NetLog.v("class name = %s [%s]\r\n",className,jarFile);
 
 		String msg;
 		try {
-			DexClassLoader classLoader = new DexClassLoader(jarFile, "/mnt/sdcard/", null, getClass().getClassLoader());
+			DexClassLoader classLoader = new DexClassLoader(jarFile, "/data/com.code4bones/tmp/", null, getClass().getClassLoader());
 			Class<?> cls = classLoader.loadClass(className);
 			ICommandObjPlugin inst = (ICommandObjPlugin)cls.newInstance();
-			//Method getPlugin = cls.getMethod("getPlugin");
-			CommandObj command = (CommandObj)inst.getPlugin();//.invoke(null); 
-			
+			CommandObj command = (CommandObj)inst.getPlugin();
+			command.mIsPlugin = true;
+			command.mPluginFile = jarFile;
 			return command;
 		} catch (ClassNotFoundException e) {
 			msg = e.getMessage();
@@ -78,9 +78,7 @@ public class PluginManager {
         			CommandObj command = loadPlugin(jarFile.getAbsolutePath(),name);
         			if ( command == null )
         				continue;
-        			
         			NetLog.v("Plugin command added: %s\r\n",command.mCommandName);
-        			command.mIsPlugin = true;
         			mPool.Add(command);
         			pluginCount++;
         		} // while jars
@@ -99,7 +97,7 @@ public class PluginManager {
 	 *  Reloading plugins
 	 */
 
-	public void reloadPlugins() {
+	public int reloadPlugins() {
 		NetLog.w("Reloading plugins...\n");
 		ArrayList<CommandObj> toRemove = new ArrayList<CommandObj>();
 		for ( CommandObj cmd : mPool.mCommands  )
@@ -119,6 +117,7 @@ public class PluginManager {
 			NetLog.w("Failed to load plugins...");
 		else 
 			NetLog.w("%d Plugins is successfuly loaded, command pool is now %d",pluginCount,mPool.mCommands.size());
+		return pluginCount;
 	}
 	
 	public PluginManager(CommandPool pool) {
