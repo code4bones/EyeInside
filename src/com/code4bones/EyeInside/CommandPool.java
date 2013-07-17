@@ -1619,6 +1619,7 @@ public class CommandPool {
 		}
 	}
 	
+	//XXX PLugin
 	public class CommandObjPlugin extends CommandObj {
 		public CommandObjPlugin(String name, String help) {
 			super(name, help);

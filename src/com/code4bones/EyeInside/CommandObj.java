@@ -142,7 +142,6 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 			mDateParam = null;
 	}
 	
-	// hello
 	public String toString() {
 		return String.format("%s {%s}",mCommandName,mArgs);
 	}
