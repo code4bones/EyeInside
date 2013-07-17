@@ -1,7 +1,6 @@
 package com.code4bones.plugins;
 
 import com.code4bones.EyeInside.CommandObj;
-import com.code4bones.EyeInside.ICommandObj;
 import com.code4bones.EyeInside.ICommandObjPlugin;
 import com.code4bones.utils.NetLog;
 

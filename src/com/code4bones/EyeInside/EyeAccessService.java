@@ -1,7 +1,5 @@
 package com.code4bones.EyeInside;
 
-import java.util.Date;
-
 import com.code4bones.utils.NetLog;
 
 import android.accessibilityservice.AccessibilityService;
@@ -9,17 +7,12 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
-import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.RemoteViews;
-import android.widget.RemoteViews.RemoteView;
 import android.widget.TextView;
 
 public class EyeAccessService extends AccessibilityService {

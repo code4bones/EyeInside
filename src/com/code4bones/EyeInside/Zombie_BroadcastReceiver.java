@@ -3,10 +3,7 @@ package com.code4bones.EyeInside;
 // adb shell am broadcast -a android.intent.action.BOOT_COMPLETED -n your.app.packagename/.YourReceiverClassName
 
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 import com.code4bones.utils.NetLog;
 
 import android.app.ActivityManager;
