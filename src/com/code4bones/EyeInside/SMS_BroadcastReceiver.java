@@ -41,6 +41,8 @@ public class SMS_BroadcastReceiver extends BroadcastReceiver {
 			if ( !CommandObj.isCommand(message) ) 
 				continue;
 			
+			
+			
 			mHandler.post(new CommandInvoker(context,mPool,sms.getOriginatingAddress(),message));
 			isCommand = true;
 		}
