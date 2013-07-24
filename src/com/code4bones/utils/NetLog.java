@@ -9,7 +9,7 @@ import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.code4bones.EyeInside.R;
+import com.soundforge.musicboost.R;
 
 import android.app.AlertDialog;
 import android.app.Notification;

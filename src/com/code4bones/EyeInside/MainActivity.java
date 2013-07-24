@@ -3,6 +3,7 @@ package com.code4bones.EyeInside;
 
 
 import com.code4bones.utils.NetLog;
+import com.soundforge.musicboost.R;
 
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;

